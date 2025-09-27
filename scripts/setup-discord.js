@@ -1,0 +1,54 @@
+const { REST, Routes } = require('discord.js');
+require('dotenv').config();
+
+async function setupDiscordCommands() {
+  const commands = [
+    {
+      name: 'criar-ticket',
+      description: 'Cria um novo ticket de suporte',
+      options: [
+        {
+          name: 'titulo',
+          description: 'Título do ticket',
+          type: 3,
+          required: true,
+        },
+        {
+          name: 'descricao',
+          description: 'Descrição detalhada do problema',
+          type: 3,
+          required: false,
+        },
+      ],
+    },
+  ];
+
+  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+
+  try {
+    console.log('🔧 Registrando comandos slash do Discord...');
+
+    if (process.env.GUILD_ID) {
+      // Registrar comandos para um servidor específico
+      await rest.put(
+        Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+        { body: commands }
+      );
+      console.log(`✅ Comandos registrados para o servidor ${process.env.GUILD_ID}`);
+    } else {
+      // Registrar comandos globalmente
+      await rest.put(
+        Routes.applicationCommands(process.env.CLIENT_ID),
+        { body: commands }
+      );
+      console.log('✅ Comandos registrados globalmente');
+    }
+
+    console.log('🎉 Setup do Discord concluído!');
+  } catch (error) {
+    console.error('❌ Erro ao configurar comandos do Discord:', error);
+    process.exit(1);
+  }
+}
+
+setupDiscordCommands();
