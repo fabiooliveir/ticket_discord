@@ -121,8 +121,9 @@ interface CorrectionTaggingData {
 graph TD
     A[Usuário executa /criar-ticket] --> B{Categoria selecionada?}
     B -->|correction-tagging| C[Buscar clientes na Leadfy]
-    B -->|general| D[Fluxo padrão de ticket]
+    B -->|new-tagging| D[Buscar clientes na Leadfy]
     C --> E[Exibir seleção de cliente]
+    D --> E
     E --> F[Cliente selecionado]
     F --> G[Exibir formulário modal]
     G --> H[Usuário preenche dados]

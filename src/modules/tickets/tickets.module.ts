@@ -6,11 +6,22 @@ import { Ticket } from '../../database/entities/ticket.entity';
 import { LeadfyModule } from '../leadfy/leadfy.module';
 import { TicketCategoryService } from './categories/ticket-category.service';
 import { CorrectionTaggingService } from './categories/correction-tagging/correction-tagging.service';
+import { NewTaggingService } from './categories/new-tagging/new-tagging.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Ticket]), forwardRef(() => LeadfyModule)],
-  providers: [TicketsService, TicketCategoryService, CorrectionTaggingService],
+  providers: [
+    TicketsService,
+    TicketCategoryService,
+    CorrectionTaggingService,
+    NewTaggingService,
+  ],
   controllers: [TicketsController],
-  exports: [TicketsService, TicketCategoryService, CorrectionTaggingService],
+  exports: [
+    TicketsService,
+    TicketCategoryService,
+    CorrectionTaggingService,
+    NewTaggingService,
+  ],
 })
 export class TicketsModule {}

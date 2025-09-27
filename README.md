@@ -1,6 +1,6 @@
 # 🎫 Ticket Discord Bot
 
-Sistema de gerenciamento de tickets para Discord construído com NestJS e MySQL.
+Sistema completo de gerenciamento de tickets para Discord com dashboard web moderno, construído com NestJS, MySQL e React.
 
 ## 🚀 Início Rápido
 
@@ -64,6 +64,41 @@ npm run start:prod
 - `GET /leadfy/stats` - Estatísticas de clientes
 - `GET /leadfy/health` - Status da integração
 - `GET /leadfy/validate/:id` - Valida cliente
+
+### API SLA (Service Level Agreement)
+- `GET /sla/metrics` - Métricas gerais de SLA
+- `GET /sla/metrics/period?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD` - Métricas de SLA por período
+- `GET /sla/metrics/ticket/:id` - Métricas de SLA de um ticket específico
+- `POST /sla/metrics/ticket/:id/update` - Atualiza métricas de SLA de um ticket
+- `GET /sla/configs` - Lista configurações de SLA ativas
+- `GET /sla/configs/:category/:priority` - Busca configuração específica
+- `POST /sla/configs` - Cria nova configuração de SLA
+- `GET /sla/status` - Status atual de SLA (tempo real)
+
+### API Dashboard
+- `GET /dashboard/overview` - Visão geral do dashboard
+- `GET /dashboard/kpis` - KPIs principais
+- `GET /dashboard/metrics` - Métricas detalhadas (com filtros de período)
+- `GET /dashboard/metrics/today` - Métricas de hoje
+- `GET /dashboard/metrics/week` - Métricas da semana
+- `GET /dashboard/metrics/month` - Métricas do mês
+- `GET /dashboard/metrics/quarter` - Métricas do trimestre
+- `GET /dashboard/metrics/year` - Métricas do ano
+- `GET /dashboard/performance` - Relatório de performance (com filtros)
+- `GET /dashboard/performance/month` - Performance do mês atual
+- `GET /dashboard/performance/quarter` - Performance do trimestre atual
+- `GET /dashboard/performance/year` - Performance do ano atual
+- `GET /dashboard/alerts` - Alertas ativos
+- `GET /dashboard/trends` - Tendências e comparações
+- `GET /dashboard/distribution/status` - Distribuição por status
+- `GET /dashboard/distribution/priority` - Distribuição por prioridade
+- `GET /dashboard/distribution/category` - Distribuição por categoria
+- `GET /dashboard/distribution/hourly` - Distribuição horária
+- `GET /dashboard/performance/agents` - Performance por agente
+- `GET /dashboard/trends/daily` - Tendências diárias
+- `GET /dashboard/sla/details` - Métricas SLA detalhadas
+- `GET /dashboard/charts/timeline` - Dados para gráficos temporais
+- `GET /dashboard/charts/distribution` - Dados para gráficos de distribuição
 
 ### Comandos Discord
 - `!ticket create <título>` - Cria um novo ticket
@@ -213,25 +248,84 @@ With Mau, you can deploy your application in just a few clicks, allowing you to 
 
 Check out a few resources that may come in handy when working with NestJS:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## 🎯 Dashboard Web
 
-## Support
+### Frontend React
+O sistema inclui um dashboard web moderno e responsivo para visualização de métricas SLA em tempo real.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+#### **Funcionalidades do Dashboard**
+- 📊 **Métricas em Tempo Real**: KPIs principais com atualização automática
+- 📈 **Gráficos Interativos**: Timeline, distribuições e tendências
+- 🚨 **Sistema de Alertas**: Notificações proativas de problemas
+- 👥 **Performance de Agentes**: Rankings e métricas individuais
+- 📱 **Interface Responsiva**: Funciona em desktop, tablet e mobile
 
-## Stay in touch
+#### **Tecnologias do Frontend**
+- **React 18** + **TypeScript** - Interface moderna e tipada
+- **Material-UI** - Componentes de design profissional
+- **Recharts** - Gráficos interativos e responsivos
+- **Axios** - Comunicação com API REST
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+#### **Executar Dashboard**
+```bash
+# Configurar frontend
+npm run setup:frontend
 
-## License
+# Iniciar em desenvolvimento
+npm run frontend:start
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+# Build para produção
+npm run frontend:build
+
+# Testar frontend
+npm run test:frontend
+```
+
+**Acesso**: http://localhost:3001
+
+---
+
+## 📚 Documentação
+
+- [Setup SLA](SLA_SETUP.md) - Configuração do sistema SLA
+- [Setup Dashboard](DASHBOARD_SETUP.md) - Configuração do dashboard backend
+- [Frontend README](frontend/README.md) - Documentação do frontend React
+
+## 🎯 Funcionalidades Implementadas
+
+### ✅ Fase 1 - Backend SLA
+- Sistema de métricas SLA completo
+- Configurações dinâmicas
+- Cálculos em tempo real
+- APIs REST para métricas
+
+### ✅ Fase 2 - Dashboard Backend  
+- Agregações avançadas de dados
+- 25+ endpoints especializados
+- Sistema de alertas inteligente
+- Relatórios de performance
+
+### ✅ Fase 3 - Frontend Dashboard
+- Interface React moderna e responsiva
+- Gráficos interativos em tempo real
+- Sistema de navegação intuitivo
+- Experiência mobile-first
+
+## 🚀 Próximos Passos
+
+### Fase 4 - Funcionalidades Avançadas
+- Alertas automáticos por email/Discord
+- Relatórios exportáveis (PDF/Excel)
+- Configurações dinâmicas via interface
+- Métricas históricas e comparativas
+
+## 📞 Suporte
+
+Para dúvidas e suporte:
+- Documentação completa disponível nos arquivos `.md`
+- Scripts de teste para validação de funcionalidades
+- Logs detalhados para debugging
+
+## 📄 Licença
+
+Este projeto é licenciado sob a licença MIT.

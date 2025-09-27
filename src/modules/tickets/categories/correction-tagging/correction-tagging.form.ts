@@ -49,10 +49,15 @@ export class CorrectionTaggingForm {
     return rows;
   }
 
-  static createModal(clientId: string): ModalBuilder {
+  static createModal(
+    clientId: string,
+    client: any,
+    team: string,
+    priority: string,
+  ): ModalBuilder {
     const modal = new ModalBuilder()
       .setCustomId(`correction_tagging_form_${clientId}`)
-      .setTitle('Correção de Tagueamento');
+      .setTitle(`Correção - ${client.name}`);
 
     // Site
     const websiteInput = new TextInputBuilder()
@@ -78,28 +83,10 @@ export class CorrectionTaggingForm {
       .setRequired(false)
       .setPlaceholder('Qualquer informação adicional relevante...');
 
-    // Time responsável
-    const teamInput = new TextInputBuilder()
-      .setCustomId('team')
-      .setLabel('Time responsável (suporte/cs/trafico)')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true)
-      .setPlaceholder('suporte');
-
-    // Prioridade
-    const priorityInput = new TextInputBuilder()
-      .setCustomId('priority')
-      .setLabel('Prioridade (high/medium/low)')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true)
-      .setPlaceholder('medium');
-
     modal.addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(websiteInput),
       new ActionRowBuilder<TextInputBuilder>().addComponents(descriptionInput),
       new ActionRowBuilder<TextInputBuilder>().addComponents(additionalInput),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(teamInput),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(priorityInput),
     );
 
     return modal;
@@ -163,7 +150,11 @@ export class CorrectionTaggingForm {
         { name: 'Site', value: data.website || 'N/A', inline: true },
         { name: 'Time', value: data.team || 'N/A', inline: true },
         { name: 'Prioridade', value: data.priority || 'N/A', inline: true },
-        { name: 'Problema', value: data.problemDescription || 'N/A', inline: false },
+        {
+          name: 'Problema',
+          value: data.problemDescription || 'N/A',
+          inline: false,
+        },
       )
       .setTimestamp();
   }

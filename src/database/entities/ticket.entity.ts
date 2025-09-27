@@ -38,4 +38,23 @@ export class Ticket extends BaseEntity {
 
   @Column({ type: 'json', nullable: true })
   categoryData: Record<string, any>;
+
+  // Campos para SLA (Service Level Agreement)
+  @Column({ type: 'timestamp', nullable: true })
+  firstResponseAt: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  resolvedAt: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  closedAt: Date;
+
+  @Column({ type: 'int', nullable: true })
+  responseTimeMinutes: number;
+
+  @Column({ type: 'int', nullable: true })
+  resolutionTimeMinutes: number;
+
+  @Column({ type: 'varchar', length: 50, default: 'business_hours' })
+  slaCategory: string;
 }

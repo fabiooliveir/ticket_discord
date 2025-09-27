@@ -103,20 +103,16 @@ export class DiscordBot implements OnModuleInit, OnModuleDestroy {
         }
       } else if (interaction.isButton()) {
         await this.discordService.handleButtonInteraction(interaction);
+      } else if (interaction.isStringSelectMenu()) {
+        await this.discordService.handleSelectMenuInteraction(interaction);
       } else if (interaction.isModalSubmit()) {
         await this.discordService.handleModalSubmit(interaction);
+      } else if (interaction.isAutocomplete()) {
+        await this.discordService.handleAutocomplete(interaction);
       }
     });
 
-    // Evento de mensagem
-    this.client.on(Events.MessageCreate, async (message) => {
-      if (message.author.bot) return;
-
-      // Verificar se a mensagem é um comando
-      if (message.content.startsWith('!ticket')) {
-        await this.discordService.handleTicketCommand(message);
-      }
-    });
+    // Evento de mensagem removido - apenas slash commands são suportados
 
     // Evento de erro
     this.client.on(Events.Error, (error) => {

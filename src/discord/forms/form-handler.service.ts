@@ -1,15 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
-import {
-  ModalSubmitInteraction,
-  ButtonInteraction,
-} from 'discord.js';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { ModalSubmitInteraction, ButtonInteraction } from 'discord.js';
 import { CorrectionTaggingService } from '../../modules/tickets/categories/correction-tagging/correction-tagging.service';
+import { NewTaggingService } from '../../modules/tickets/categories/new-tagging/new-tagging.service';
 import { TicketCategoryService } from '../../modules/tickets/categories/ticket-category.service';
 import { CorrectionTaggingForm } from '../../modules/tickets/categories/correction-tagging/correction-tagging.form';
+import { NewTaggingForm } from '../../modules/tickets/categories/new-tagging/new-tagging.form';
 import { CorrectionTaggingFormData } from '../../modules/tickets/categories/correction-tagging/correction-tagging.interface';
+import { NewTaggingFormData } from '../../modules/tickets/categories/new-tagging/new-tagging.interface';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Ticket } from '../../database/entities/ticket.entity';
+import { DiscordService } from '../discord.service';
+import { TicketsService } from '../../modules/tickets/tickets.service';
 
 @Injectable()
 export class FormHandlerService {
@@ -18,9 +20,13 @@ export class FormHandlerService {
 
   constructor(
     private readonly correctionTaggingService: CorrectionTaggingService,
+    private readonly newTaggingService: NewTaggingService,
     private readonly ticketCategoryService: TicketCategoryService,
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
+    @Inject(forwardRef(() => DiscordService))
+    private readonly discordService: DiscordService,
+    private readonly ticketsService: TicketsService,
   ) {}
 
   async handleModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -28,6 +34,8 @@ export class FormHandlerService {
 
     if (customId.startsWith('correction_tagging_form_')) {
       await this.handleCorrectionTaggingModal(interaction);
+    } else if (customId.startsWith('new_tagging_form_')) {
+      await this.handleNewTaggingModal(interaction);
     } else {
       this.logger.warn(`Modal não reconhecido: ${customId}`);
       await interaction.reply({
@@ -42,13 +50,19 @@ export class FormHandlerService {
 
     if (customId.startsWith('select_client_')) {
       await this.handleClientSelection(interaction);
-    } else if (customId.startsWith('select_team_')) {
-      await this.handleTeamSelection(interaction);
-    } else if (customId.startsWith('select_priority_')) {
-      await this.handlePrioritySelection(interaction);
-    } else if (customId === 'confirm_ticket') {
+    } else if (customId.startsWith('select_client_new_tagging_')) {
+      await this.handleNewTaggingClientSelection(interaction);
+    } else if (
+      customId === 'confirm_ticket' ||
+      customId.startsWith('confirm_ticket_') ||
+      customId === 'confirm_new_tagging_ticket'
+    ) {
       await this.handleTicketConfirmation(interaction);
-    } else if (customId === 'cancel_ticket') {
+    } else if (
+      customId === 'cancel_ticket' ||
+      customId.startsWith('cancel_ticket_') ||
+      customId === 'cancel_new_tagging_ticket'
+    ) {
       await this.handleTicketCancellation(interaction);
     } else {
       this.logger.warn(`Botão não reconhecido: ${customId}`);
@@ -67,31 +81,18 @@ export class FormHandlerService {
         'correction_tagging_form_',
         '',
       );
+      // Buscar dados da sessão do DiscordService
+      const sessionKey = `${interaction.user.id}_${clientId}`;
+      const discordSession = this.discordService.getUserSession(sessionKey);
 
-      // Extrair dados do formulário
       const formData: CorrectionTaggingFormData = {
         website: interaction.fields.getTextInputValue('website'),
         problemDescription:
           interaction.fields.getTextInputValue('problemDescription'),
-        additionalInfo:
-          interaction.fields.getTextInputValue('additionalInfo') || undefined,
-        team: interaction.fields.getTextInputValue('team'),
-        priority: interaction.fields.getTextInputValue('priority') as
-          | 'low'
-          | 'medium'
-          | 'high',
+        additionalInfo: interaction.fields.getTextInputValue('additionalInfo'),
+        team: discordSession?.team || 'suporte',
+        priority: discordSession?.priority || 'medium',
       };
-
-      // Validar dados
-      const validation =
-        this.correctionTaggingService.validateFormData(formData);
-      if (!validation.isValid) {
-        await interaction.reply({
-          content: `❌ Dados inválidos:\n${validation.errors.join('\n')}`,
-          ephemeral: true,
-        });
-        return;
-      }
 
       // Buscar dados do cliente
       const client =
@@ -104,34 +105,112 @@ export class FormHandlerService {
         return;
       }
 
-      // Construir dados do ticket
-      const ticketData = this.correctionTaggingService.buildTicketData(
-        clientId,
-        client.name,
-        formData,
-      );
-
-      // Salvar sessão do usuário
+      // Armazenar dados da sessão
       this.userSessions.set(interaction.user.id, {
-        type: 'correction-tagging',
         clientId,
         clientName: client.name,
         formData,
-        ticketData,
+        ticketData: {
+          clientId,
+          clientName: client.name,
+          category: discordSession?.category || 'correction-tagging',
+          team: discordSession?.team || 'suporte',
+          priority: discordSession?.priority || 'medium',
+        },
       });
 
       // Mostrar confirmação
-      const embed = CorrectionTaggingForm.createConfirmationEmbed(ticketData);
-      const buttons = CorrectionTaggingForm.createConfirmationButtons();
+      const embed = CorrectionTaggingForm.createConfirmationEmbed({
+        clientId,
+        clientName: client.name,
+        website: formData.website,
+        problemDescription: formData.problemDescription,
+        team: formData.team,
+        priority: formData.priority,
+      });
+
+      const confirmButton = CorrectionTaggingForm.createConfirmationButtons();
 
       await interaction.reply({
         embeds: [embed],
-        components: [buttons],
+        components: [confirmButton],
+        ephemeral: true,
+      });
+    } catch (error) {
+      this.logger.error('Erro ao processar formulário de correção:', error);
+      await interaction.reply({
+        content: '❌ Erro ao processar formulário!',
+        ephemeral: true,
+      });
+    }
+  }
+
+  private async handleNewTaggingModal(
+    interaction: ModalSubmitInteraction,
+  ): Promise<void> {
+    try {
+      const clientId = interaction.customId.replace('new_tagging_form_', '');
+      const formData: NewTaggingFormData = {
+        metaAccountId: interaction.fields.getTextInputValue('metaAccountId'),
+        googleAdsAccountId:
+          interaction.fields.getTextInputValue('googleAdsAccountId'),
+        facebookPixelId:
+          interaction.fields.getTextInputValue('facebookPixelId'),
+        additionalInfo: interaction.fields.getTextInputValue('additionalInfo'),
+        team: 'suporte',
+        priority: 'medium',
+      };
+
+      // Buscar dados do cliente
+      const client = await this.newTaggingService.getClientById(clientId);
+      if (!client) {
+        await interaction.reply({
+          content: '❌ Cliente não encontrado!',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      // Buscar dados da sessão do Discord para team e priority
+      const sessionKey = `${interaction.user.id}_${clientId}`;
+      const discordSession = this.discordService.getUserSession(sessionKey);
+
+      // Armazenar dados da sessão
+      this.userSessions.set(interaction.user.id, {
+        clientId,
+        clientName: client.name,
+        formData,
+        ticketData: {
+          clientId,
+          clientName: client.name,
+          category: 'new-tagging',
+          team: discordSession?.team || 'suporte',
+          priority: discordSession?.priority || 'medium',
+        },
+      });
+
+      // Mostrar confirmação
+      const embed = NewTaggingForm.createConfirmationEmbed({
+        clientId,
+        clientName: client.name,
+        team: discordSession?.team || 'suporte',
+        priority: discordSession?.priority || 'medium',
+        metaAccountId: formData.metaAccountId,
+        googleAdsAccountId: formData.googleAdsAccountId,
+        facebookPixelId: formData.facebookPixelId,
+        additionalInfo: formData.additionalInfo,
+      });
+
+      const confirmButton = NewTaggingForm.createConfirmationButtons();
+
+      await interaction.reply({
+        embeds: [embed],
+        components: [confirmButton],
         ephemeral: true,
       });
     } catch (error) {
       this.logger.error(
-        'Erro ao processar modal de correção de tagueamento:',
+        'Erro ao processar formulário de novo tagueamento:',
         error,
       );
       await interaction.reply({
@@ -147,19 +226,26 @@ export class FormHandlerService {
     try {
       const clientId = interaction.customId.replace('select_client_', '');
 
-      // Validar cliente
-      const isValid =
-        await this.correctionTaggingService.validateClient(clientId);
-      if (!isValid) {
+      // Buscar dados do cliente
+      const clients = await this.correctionTaggingService.getAllClients();
+      const client = clients.find((c) => c.id === clientId);
+
+      if (!client) {
         await interaction.reply({
-          content: '❌ Cliente inválido!',
+          content: '❌ Cliente não encontrado!',
           ephemeral: true,
         });
         return;
       }
 
-      // Mostrar formulário
-      const modal = CorrectionTaggingForm.createModal(clientId);
+      // Criar modal para correção de tagueamento
+      const modal = CorrectionTaggingForm.createModal(
+        clientId,
+        client,
+        'suporte',
+        'medium',
+      );
+
       await interaction.showModal(modal);
     } catch (error) {
       this.logger.error('Erro ao processar seleção de cliente:', error);
@@ -170,24 +256,43 @@ export class FormHandlerService {
     }
   }
 
-  private async handleTeamSelection(
+  private async handleNewTaggingClientSelection(
     interaction: ButtonInteraction,
   ): Promise<void> {
-    // Implementar se necessário para fluxo mais complexo
-    await interaction.reply({
-      content: 'Seleção de time processada!',
-      ephemeral: true,
-    });
-  }
+    try {
+      const clientId = interaction.customId.replace(
+        'select_client_new_tagging_',
+        '',
+      );
 
-  private async handlePrioritySelection(
-    interaction: ButtonInteraction,
-  ): Promise<void> {
-    // Implementar se necessário para fluxo mais complexo
-    await interaction.reply({
-      content: 'Seleção de prioridade processada!',
-      ephemeral: true,
-    });
+      // Buscar dados do cliente
+      const clients = await this.newTaggingService.getAllClients();
+      const client = clients.find((c) => c.id === clientId);
+
+      if (!client) {
+        await interaction.reply({
+          content: '❌ Cliente não encontrado!',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      // Criar modal para novo tagueamento
+      const modal = NewTaggingForm.createModal(
+        clientId,
+        client,
+        'suporte',
+        'medium',
+      );
+
+      await interaction.showModal(modal);
+    } catch (error) {
+      this.logger.error('Erro ao processar seleção de cliente:', error);
+      await interaction.reply({
+        content: '❌ Erro ao processar seleção!',
+        ephemeral: true,
+      });
+    }
   }
 
   private async handleTicketConfirmation(
@@ -203,16 +308,125 @@ export class FormHandlerService {
         return;
       }
 
+      // Determinar categoria baseada na sessão
+      const category = session.ticketData?.category || 'correction-tagging';
+
       // Criar ticket usando o serviço de categorias
       const ticket = await this.ticketCategoryService.createTicketWithCategory(
-        'correction-tagging',
-        session.ticketData as any,
+        category,
+        session.ticketData,
         interaction.user.id,
         interaction.channelId,
       );
 
+      // Obter equipe baseada na seleção da sessão
+      const teamName = session.ticketData?.team || 'suporte';
+      const team = this.discordService['getTeamByName'](teamName);
+
+      // Determinar texto da categoria
+      const categoryText =
+        category === 'correction-tagging'
+          ? 'Correção de Tagueamento'
+          : 'Novo Tagueamento';
+
+      // Criar thread do ticket
+      const thread = await this.discordService['createTicketThread'](team, {
+        id: ticket.id,
+        title: ticket.title,
+        clientName: session.clientName,
+        category: categoryText,
+        priority: session.ticketData.priority || 'medium',
+        author: interaction.user.tag,
+        formData: session.formData, // Passar dados do formulário
+      });
+
+      // Atualizar ticket com informações da thread
+      if (thread) {
+        await this.ticketsService.updateTicket(ticket.id, {
+          metadata: {
+            ...ticket.metadata,
+            clientName: session.clientName,
+            category: categoryText,
+            team: teamName,
+            formData: session.formData, // Salvar dados do formulário
+            threadId: thread.id,
+            threadUrl: `https://discord.com/channels/${interaction.guildId}/${thread.id}`,
+          },
+        });
+      }
+
+      // Determinar informações específicas baseadas na categoria
+      let specificInfo = '';
+      if (category === 'correction-tagging') {
+        specificInfo = `\n**Site:** ${session.formData.website}`;
+      } else if (category === 'new-tagging') {
+        specificInfo = `\n**Meta Account ID:** ${session.formData.metaAccountId}`;
+      }
+
       await interaction.reply({
-        content: `✅ Ticket de correção de tagueamento criado com sucesso!\n**ID:** ${ticket.id}\n**Cliente:** ${session.clientName}\n**Site:** ${session.formData.website}`,
+        content: `✅ Ticket de ${categoryText.toLowerCase()} criado com sucesso!\n**ID:** ${ticket.id}\n**Cliente:** ${session.clientName}${specificInfo}${thread ? `\n**Thread:** <#${thread.id}>` : ''}`,
+        ephemeral: true,
+      });
+
+      // Limpar sessão
+      this.userSessions.delete(interaction.user.id);
+    } catch (error) {
+      this.logger.error('Erro ao confirmar ticket:', error);
+      await interaction.reply({
+        content: '❌ Erro ao confirmar ticket!',
+        ephemeral: true,
+      });
+    }
+  }
+
+  private async handleNewTaggingConfirmation(
+    interaction: ButtonInteraction,
+  ): Promise<void> {
+    try {
+      const session = this.userSessions.get(interaction.user.id);
+      if (!session) {
+        await interaction.reply({
+          content: '❌ Sessão expirada! Crie um novo ticket.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      // Criar ticket usando o serviço de categorias
+      const ticket = await this.ticketCategoryService.createTicketWithCategory(
+        'new-tagging',
+        session.ticketData,
+        interaction.user.id,
+        interaction.channelId,
+      );
+
+      // Obter equipe baseada na seleção (usar valores padrão por enquanto)
+      const team = this.discordService['getTeamByName']('Suporte Técnico');
+
+      // Criar thread do ticket
+      const thread = await this.discordService['createTicketThread'](team, {
+        id: ticket.id,
+        title: ticket.title,
+        clientName: session.clientName,
+        category: 'Novo Tagueamento',
+        priority: session.ticketData.priority || 'medium',
+        author: interaction.user.tag,
+      });
+
+      // Atualizar ticket com informações da thread
+      if (thread) {
+        await this.ticketsService.updateTicket(ticket.id, {
+          metadata: {
+            ...ticket.metadata,
+            clientName: session.clientName,
+            threadId: thread.id,
+            threadUrl: `https://discord.com/channels/${interaction.guildId}/${thread.id}`,
+          },
+        });
+      }
+
+      await interaction.reply({
+        content: `✅ Ticket de novo tagueamento criado com sucesso!\n**ID:** ${ticket.id}\n**Cliente:** ${session.clientName}\n**Site:** ${session.formData.website}${thread ? `\n**Thread:** <#${thread.id}>` : ''}`,
         ephemeral: true,
       });
 
@@ -237,13 +451,5 @@ export class FormHandlerService {
       content: '❌ Criação do ticket cancelada.',
       ephemeral: true,
     });
-  }
-
-  getUserSession(userId: string): any {
-    return this.userSessions.get(userId);
-  }
-
-  clearUserSession(userId: string): void {
-    this.userSessions.delete(userId);
   }
 }

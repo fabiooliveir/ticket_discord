@@ -3,3 +3,6 @@ export * from './ticket-category.service';
 export * from './correction-tagging/correction-tagging.interface';
 export * from './correction-tagging/correction-tagging.service';
 export * from './correction-tagging/correction-tagging.form';
+export * from './new-tagging/new-tagging.interface';
+export * from './new-tagging/new-tagging.service';
+export * from './new-tagging/new-tagging.form';

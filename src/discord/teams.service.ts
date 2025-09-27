@@ -18,7 +18,7 @@ export class TeamsService {
 
   constructor(
     @Inject('TEAMS_CONFIG') private readonly config: any,
-    private readonly discordBot: DiscordBot,
+    public readonly discordBot: DiscordBot,
   ) {}
 
   /**

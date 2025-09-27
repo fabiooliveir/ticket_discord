@@ -1,12 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
-  Message,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   ChannelType,
   PermissionFlagsBits,
+  StringSelectMenuBuilder,
+  ThreadChannel,
 } from 'discord.js';
 import { Inject } from '@nestjs/common';
 import { DiscordBot } from './discord.bot';
@@ -19,10 +20,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { TicketCategoryService } from '../modules/tickets/categories/ticket-category.service';
 import { CorrectionTaggingService } from '../modules/tickets/categories/correction-tagging/correction-tagging.service';
 import { CorrectionTaggingForm } from '../modules/tickets/categories/correction-tagging/correction-tagging.form';
+import { NewTaggingService } from '../modules/tickets/categories/new-tagging/new-tagging.service';
+import { NewTaggingForm } from '../modules/tickets/categories/new-tagging/new-tagging.form';
 
 @Injectable()
 export class DiscordService {
   private readonly logger = new Logger(DiscordService.name);
+  private userSessions: Map<string, any> = new Map();
+
+  getUserSession(sessionKey: string): any {
+    return this.userSessions.get(sessionKey);
+  }
 
   constructor(
     @Inject('DISCORD_CONFIG') private readonly config: any,
@@ -31,319 +39,23 @@ export class DiscordService {
     private readonly formHandlerService: FormHandlerService,
     private readonly ticketCategoryService: TicketCategoryService,
     private readonly correctionTaggingService: CorrectionTaggingService,
+    private readonly newTaggingService: NewTaggingService,
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
   ) {}
-
-  async handleTicketCommand(message: Message) {
-    try {
-      const args = message.content.split(' ').slice(1);
-      const command = args[0];
-
-      switch (command) {
-        case 'create':
-          await this.createTicket(message, args.slice(1));
-          break;
-        case 'close':
-          await this.closeTicket(message);
-          break;
-        case 'list':
-          await this.listTickets(message);
-          break;
-        case 'teams':
-          await this.showTeamsInfo(message);
-          break;
-        case 'stats':
-          await this.showTeamStats(message);
-          break;
-        case 'help':
-          await this.showHelp(message);
-          break;
-        default:
-          await this.showHelp(message);
-      }
-    } catch (error) {
-      this.logger.error('Erro ao processar comando de ticket:', error);
-      await message.reply('❌ Ocorreu um erro ao processar o comando!');
-    }
-  }
-
-  async createTicket(message: Message, args: string[]) {
-    if (args.length === 0) {
-      await message.reply(
-        '❌ Por favor, forneça um título para o ticket!\nExemplo: `!ticket create Problema com login`',
-      );
-      return;
-    }
-
-    const title = args.join(' ');
-    const userId = message.author.id;
-    const channelId = message.channel.id;
-
-    try {
-      // Verificar se o usuário já tem um ticket aberto
-      const existingTicket = await this.ticketRepository.findOne({
-        where: {
-          discordUserId: userId,
-          status: 'open',
-        },
-      });
-
-      if (existingTicket) {
-        await message.reply(
-          '❌ Você já possui um ticket aberto! Use `!ticket close` para fechar o atual.',
-        );
-        return;
-      }
-
-      // Determinar equipe responsável baseado no conteúdo
-      const team = this.teamsService.determineTeamForTicket(title);
-      const teamInfo = team
-        ? `\n\n🎯 **Direcionado para:** ${team.emoji} ${team.name}`
-        : '';
-
-      // Criar ticket no banco de dados
-      const ticket = this.ticketRepository.create({
-        title,
-        description: `Ticket criado por ${message.author.tag}${teamInfo}`,
-        status: 'open',
-        priority: 'medium',
-        discordUserId: userId,
-        discordChannelId: channelId,
-        metadata: {
-          createdBy: message.author.tag,
-          createdAt: new Date().toISOString(),
-          assignedTeam: team?.name || 'Suporte Técnico',
-          teamChannelId: team?.channelId,
-          teamRoleId: team?.roleId,
-        },
-      });
-
-      const savedTicket = await this.ticketRepository.save(ticket);
-
-      // Notificar a equipe responsável
-      if (team) {
-        await this.teamsService.notifyTeam(team, {
-          id: savedTicket.id,
-          title: savedTicket.title,
-          description: savedTicket.description,
-          author: message.author.tag,
-          priority: savedTicket.priority,
-        });
-      }
-
-      // Criar embed de confirmação
-      const embed = new EmbedBuilder()
-        .setTitle('🎫 Ticket Criado')
-        .setDescription(`**Título:** ${title}`)
-        .addFields(
-          { name: 'ID do Ticket', value: savedTicket.id, inline: true },
-          { name: 'Status', value: 'Aberto', inline: true },
-          { name: 'Prioridade', value: 'Média', inline: true },
-          {
-            name: 'Equipe Responsável',
-            value: team ? `${team.emoji} ${team.name}` : '🔧 Suporte Técnico',
-            inline: false,
-          },
-        )
-        .setColor(team?.color || 0x00ff00)
-        .setTimestamp()
-        .setFooter({ text: `Criado por ${message.author.tag}` });
-
-      // Criar botões de ação
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`close_ticket_${savedTicket.id}`)
-          .setLabel('Fechar Ticket')
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId(`priority_high_${savedTicket.id}`)
-          .setLabel('Alta Prioridade')
-          .setStyle(ButtonStyle.Primary),
-      );
-
-      await message.reply({ embeds: [embed], components: [row] });
-
-      this.logger.log(
-        `Ticket ${savedTicket.id} criado por ${message.author.tag} e direcionado para ${team?.name || 'Suporte Técnico'}`,
-      );
-    } catch (error) {
-      this.logger.error('Erro ao criar ticket:', error);
-      await message.reply(
-        '❌ Erro ao criar ticket. Tente novamente mais tarde.',
-      );
-    }
-  }
-
-  async closeTicket(message: Message) {
-    try {
-      const userId = message.author.id;
-
-      const ticket = await this.ticketRepository.findOne({
-        where: {
-          discordUserId: userId,
-          status: 'open',
-        },
-      });
-
-      if (!ticket) {
-        await message.reply('❌ Você não possui nenhum ticket aberto!');
-        return;
-      }
-
-      // Atualizar status do ticket
-      ticket.status = 'closed';
-      ticket.metadata = {
-        ...ticket.metadata,
-        closedBy: message.author.tag,
-        closedAt: new Date().toISOString(),
-      };
-
-      await this.ticketRepository.save(ticket);
-
-      const embed = new EmbedBuilder()
-        .setTitle('🎫 Ticket Fechado')
-        .setDescription(`Ticket **${ticket.title}** foi fechado com sucesso!`)
-        .setColor(0xff0000)
-        .setTimestamp()
-        .setFooter({ text: `Fechado por ${message.author.tag}` });
-
-      await message.reply({ embeds: [embed] });
-
-      this.logger.log(`Ticket ${ticket.id} fechado por ${message.author.tag}`);
-    } catch (error) {
-      this.logger.error('Erro ao fechar ticket:', error);
-      await message.reply(
-        '❌ Erro ao fechar ticket. Tente novamente mais tarde.',
-      );
-    }
-  }
-
-  async listTickets(message: Message) {
-    try {
-      const userId = message.author.id;
-
-      const tickets = await this.ticketRepository.find({
-        where: {
-          discordUserId: userId,
-        },
-        order: {
-          createdAt: 'DESC',
-        },
-        take: 10,
-      });
-
-      if (tickets.length === 0) {
-        await message.reply('📝 Você não possui nenhum ticket!');
-        return;
-      }
-
-      const embed = new EmbedBuilder()
-        .setTitle('📝 Seus Tickets')
-        .setDescription('Lista dos seus últimos 10 tickets:')
-        .setColor(0x0099ff)
-        .setTimestamp();
-
-      tickets.forEach((ticket, index) => {
-        const status = ticket.status === 'open' ? '🟢 Aberto' : '🔴 Fechado';
-        const priority =
-          ticket.priority === 'high'
-            ? '🔴 Alta'
-            : ticket.priority === 'medium'
-              ? '🟡 Média'
-              : '🟢 Baixa';
-
-        embed.addFields({
-          name: `${index + 1}. ${ticket.title}`,
-          value: `**ID:** ${ticket.id}\n**Status:** ${status}\n**Prioridade:** ${priority}\n**Criado:** <t:${Math.floor(ticket.createdAt.getTime() / 1000)}:R>`,
-          inline: false,
-        });
-      });
-
-      await message.reply({ embeds: [embed] });
-    } catch (error) {
-      this.logger.error('Erro ao listar tickets:', error);
-      await message.reply(
-        '❌ Erro ao listar tickets. Tente novamente mais tarde.',
-      );
-    }
-  }
-
-  async showHelp(message: Message) {
-    const embed = new EmbedBuilder()
-      .setTitle('🎫 Sistema de Tickets - Ajuda')
-      .setDescription('Comandos disponíveis para gerenciar tickets:')
-      .addFields(
-        {
-          name: '!ticket create <título>',
-          value:
-            'Cria um novo ticket (direcionado automaticamente para a equipe correta)',
-          inline: false,
-        },
-        {
-          name: '!ticket close',
-          value: 'Fecha seu ticket aberto',
-          inline: false,
-        },
-        { name: '!ticket list', value: 'Lista seus tickets', inline: false },
-        {
-          name: '!ticket teams',
-          value: 'Mostra informações sobre as equipes configuradas',
-          inline: false,
-        },
-        {
-          name: '!ticket stats',
-          value: 'Mostra estatísticas das equipes (canais e membros)',
-          inline: false,
-        },
-        {
-          name: '!ticket help',
-          value: 'Mostra esta mensagem de ajuda',
-          inline: false,
-        },
-      )
-      .setColor(0x0099ff)
-      .setTimestamp()
-      .setFooter({ text: 'Sistema de Tickets Discord' });
-
-    await message.reply({ embeds: [embed] });
-  }
 
   async getSlashCommands() {
     return [
       {
         name: 'criar-ticket',
-        description: 'Cria um novo ticket de suporte',
+        description: 'Cria um novo ticket para qualquer equipe',
         options: [
           {
-            name: 'categoria',
-            description: 'Categoria do ticket',
-            type: 3,
+            name: 'cliente',
+            description: 'Selecione o cliente para o ticket',
+            type: 3, // STRING
             required: true,
-            choices: [
-              {
-                name: 'Correção de Tagueamento',
-                value: 'correction-tagging',
-              },
-              {
-                name: 'Ticket Geral',
-                value: 'general',
-              },
-            ],
-          },
-          {
-            name: 'titulo',
-            description:
-              'Título do ticket (opcional para correção de tagueamento)',
-            type: 3,
-            required: false,
-          },
-          {
-            name: 'descricao',
-            description:
-              'Descrição detalhada do problema (opcional para correção de tagueamento)',
-            type: 3,
-            required: false,
+            autocomplete: true,
           },
         ],
       },
@@ -365,37 +77,87 @@ export class DiscordService {
     }
   }
 
+  async handleAutocomplete(interaction: any) {
+    const commandName = interaction.commandName;
+    const options = interaction.options;
+
+    if (commandName === 'criar-ticket') {
+      // Tentar diferentes formas de obter a query
+      let query = '';
+
+      try {
+        const focusedOption = options.getFocused();
+        if (focusedOption) {
+          // getFocused() retorna o valor diretamente, não um objeto
+          query = String(focusedOption);
+        }
+      } catch (error) {
+        this.logger.warn('Erro ao obter query do autocomplete:', error.message);
+        query = '';
+      }
+
+      this.logger.log(
+        `🔍 Autocomplete - Command: ${commandName}, Query: "${query}"`,
+      );
+      await this.handleClientAutocomplete(interaction, query);
+    }
+  }
+
+  private async handleClientAutocomplete(interaction: any, query: string) {
+    try {
+      this.logger.log(`🔍 Autocomplete solicitado para query: "${query}"`);
+
+      // Buscar clientes com base na query
+      const clients = await this.correctionTaggingService.searchClients(
+        query || '',
+      );
+
+      this.logger.log(`📋 Encontrados ${clients.length} clientes`);
+
+      // Limitar a 25 opções (limite do Discord)
+      const choices = clients.slice(0, 25).map((client) => ({
+        name: client.name,
+        value: client.name, // Usar o nome como valor também
+      }));
+
+      this.logger.log(`✅ Enviando ${choices.length} opções para o Discord`);
+      await interaction.respond(choices);
+    } catch (error) {
+      this.logger.error('Erro no autocomplete de clientes:', error);
+      await interaction.respond([]);
+    }
+  }
+
   private async handleCreateTicketSlash(interaction: any, options: any) {
     try {
-      const category = options.getString('categoria');
-      const title = options.getString('titulo');
-      const description =
-        options.getString('descricao') || 'Sem descrição fornecida';
-
       // Defer a resposta para dar tempo de processar
       await interaction.deferReply({ ephemeral: true });
 
-      if (category === 'correction-tagging') {
-        // Fluxo específico para correção de tagueamento
-        await this.handleCorrectionTaggingFlow(interaction);
-      } else {
-        // Fluxo padrão para tickets gerais
-        const ticket = await this.createTicketFromSlash(
-          interaction,
-          title,
-          description,
-        );
+      // Obter o cliente selecionado
+      const clientName = options.getString('cliente');
 
-        if (ticket) {
-          await interaction.editReply({
-            content: `✅ Ticket criado com sucesso! ID: ${ticket.id}`,
-          });
-        } else {
-          await interaction.editReply({
-            content: '❌ Erro ao criar ticket. Tente novamente.',
-          });
-        }
+      if (!clientName) {
+        await interaction.editReply({
+          content: '❌ Cliente não selecionado. Tente novamente.',
+        });
+        return;
       }
+
+      // Buscar dados do cliente pelo nome
+      const clients = await this.correctionTaggingService.getAllClients();
+      const selectedClient = clients.find(
+        (client) => client.name === clientName,
+      );
+
+      if (!selectedClient) {
+        await interaction.editReply({
+          content: '❌ Cliente não encontrado. Tente novamente.',
+        });
+        return;
+      }
+
+      // Prosseguir com a criação do ticket usando o cliente selecionado
+      await this.handleClientSelected(interaction, selectedClient.id);
     } catch (error) {
       this.logger.error('Erro ao criar ticket via slash command:', error);
       await interaction.editReply({
@@ -404,125 +166,408 @@ export class DiscordService {
     }
   }
 
-  private async createTicketFromSlash(
-    interaction: any,
-    title: string,
-    description: string,
-  ) {
+  // Método para criar thread do ticket
+  private async createTicketThread(
+    team: any,
+    ticketData: {
+      id: string;
+      title: string;
+      clientName: string;
+      category: string;
+      priority: string;
+      author: string;
+      formData?: any; // Dados do formulário
+    },
+  ): Promise<ThreadChannel | null> {
     try {
-      const guild = interaction.guild;
-      const user = interaction.user;
-
-      // Criar canal do ticket
-      const ticketChannel = await guild.channels.create({
-        name: `ticket-${user.username}`,
-        type: ChannelType.GuildText,
-        parent: this.config.ticketCategoryId,
-        permissionOverwrites: [
-          {
-            id: guild.roles.everyone.id,
-            deny: [PermissionFlagsBits.ViewChannel],
-          },
-          {
-            id: user.id,
-            allow: [
-              PermissionFlagsBits.ViewChannel,
-              PermissionFlagsBits.SendMessages,
-            ],
-          },
-        ],
-      });
-
-      // Salvar no banco de dados
-      const ticket = this.ticketRepository.create({
-        title,
-        description,
-        status: 'open',
-        priority: 'normal',
-        discordUserId: user.id,
-        discordChannelId: ticketChannel.id,
-        metadata: {
-          createdBy: user.tag,
-          guildId: guild.id,
-        },
-      });
-
-      const savedTicket = await this.ticketRepository.save(ticket);
-
-      // Criar embed do ticket
-      const embed = new EmbedBuilder()
-        .setTitle(`🎫 Ticket #${savedTicket.id}`)
-        .setDescription(`**Título:** ${title}\n**Descrição:** ${description}`)
-        .addFields(
-          { name: '👤 Criado por', value: user.tag, inline: true },
-          {
-            name: '📅 Data',
-            value: new Date().toLocaleString('pt-BR'),
-            inline: true,
-          },
-          { name: '📊 Status', value: '🟢 Aberto', inline: true },
-        )
-        .setColor(0x00ff00)
-        .setFooter({ text: 'Sistema de Tickets Discord' });
-
-      // Criar botões de ação
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`close_ticket_${savedTicket.id}`)
-          .setLabel('Fechar Ticket')
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId(`priority_ticket_${savedTicket.id}`)
-          .setLabel('Alta Prioridade')
-          .setStyle(ButtonStyle.Primary),
+      const channel = await this.teamsService.discordBot.client.channels.fetch(
+        team.channelId,
       );
 
-      // Enviar mensagem no canal do ticket
-      await ticketChannel.send({
-        content: `<@${user.id}>`,
-        embeds: [embed],
-        components: [row],
-      });
-
-      // Notificar no canal de logs se configurado
-      if (this.config.logChannelId) {
-        const logChannel = guild.channels.cache.get(this.config.logChannelId);
-        if (logChannel && logChannel.isTextBased()) {
-          const logEmbed = new EmbedBuilder()
-            .setTitle('🎫 Novo Ticket Criado')
-            .setDescription(
-              `**Ticket:** ${title}\n**Canal:** <#${ticketChannel.id}>\n**Usuário:** ${user.tag}`,
-            )
-            .setColor(0x00ff00)
-            .setTimestamp();
-
-          await logChannel.send({ embeds: [logEmbed] });
-        }
+      if (!channel || !channel.isTextBased()) {
+        this.logger.error(
+          `Canal ${team.channelId} não encontrado ou não é de texto`,
+        );
+        return null;
       }
 
-      return savedTicket;
+      // Verificar se é um canal de texto ou notícias (que suportam threads)
+      if (
+        channel.type !== ChannelType.GuildText &&
+        channel.type !== ChannelType.GuildNews
+      ) {
+        this.logger.error(`Canal ${team.channelId} não suporta threads`);
+        return null;
+      }
+
+      // Criar thread com nome do ticket
+      const threadName = `🔴 🎫 ${ticketData.clientName}`.substring(0, 100);
+
+      const thread = await (channel as any).threads.create({
+        name: threadName,
+        autoArchiveDuration: 10080, // 7 dias (máximo permitido pelo Discord)
+        reason: `Ticket criado por ${ticketData.author}`,
+      });
+
+      // Criar embed inicial do ticket
+      let embed = new EmbedBuilder()
+        .setTitle(`🎫 Ticket #${ticketData.id}`)
+        .setDescription(
+          `**Cliente:** ${ticketData.clientName}\n**Categoria:** ${ticketData.category}\n**Prioridade:** ${ticketData.priority}`,
+        )
+        .addFields(
+          {
+            name: 'Status',
+            value: '🔴 **NA FILA** - Aguardando atendimento',
+            inline: true,
+          },
+          { name: 'Equipe', value: team.name, inline: true },
+          { name: 'Responsável', value: 'Aguardando atribuição', inline: true },
+        )
+        .setColor(0xff0000) // Vermelho para fila
+        .setTimestamp()
+        .setFooter({ text: `Criado por ${ticketData.author}` });
+
+      // Adicionar campos específicos baseados na categoria
+      if (ticketData.category === 'new-tagging' && ticketData.formData) {
+        embed = embed.addFields(
+          {
+            name: 'Meta Account ID',
+            value: ticketData.formData.metaAccountId || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Google Ads ID',
+            value: ticketData.formData.googleAdsAccountId || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Facebook Pixel ID',
+            value: ticketData.formData.facebookPixelId || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Informações Adicionais',
+            value: ticketData.formData.additionalInfo || 'Nenhuma',
+            inline: false,
+          },
+        );
+      } else if (
+        ticketData.category === 'correction-tagging' &&
+        ticketData.formData
+      ) {
+        embed = embed.addFields(
+          {
+            name: 'Site',
+            value: ticketData.formData.website || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Descrição do Problema',
+            value: ticketData.formData.problemDescription || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Informações Adicionais',
+            value: ticketData.formData.additionalInfo || 'Nenhuma',
+            inline: false,
+          },
+        );
+      }
+
+      // Botão para puxar ticket
+      const pullButton = new ButtonBuilder()
+        .setCustomId(`pull_ticket_${ticketData.id}`)
+        .setLabel('Puxar para mim')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('👤');
+
+      // Botão para arquivar thread
+      const archiveButton = new ButtonBuilder()
+        .setCustomId(`archive_thread_${ticketData.id}`)
+        .setLabel('Arquivar')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('📁');
+
+      const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        pullButton,
+        archiveButton,
+      );
+
+      // Enviar mensagem inicial na thread
+      await thread.send({
+        content: `<@&${team.roleId}> - Novo ticket criado!`,
+        embeds: [embed],
+        components: [buttonRow],
+      });
+
+      this.logger.log(`Thread criada: ${thread.name} (${thread.id})`);
+      return thread;
     } catch (error) {
-      this.logger.error('Erro ao criar ticket:', error);
+      this.logger.error('Erro ao criar thread do ticket:', error);
       return null;
     }
+  }
+
+  // Método para obter equipe por nome
+  private getTeamByName(teamValue: string): any {
+    const teams = this.teamsService.getTeamsConfig();
+
+    // Mapear valores do select para nomes das equipes
+    const teamMapping = {
+      suporte: 'Suporte Técnico',
+      cs: 'Customer Success',
+      trafico: 'Tráfego Pago',
+    };
+
+    const teamName = teamMapping[teamValue] || teamValue;
+    return teams.find((team) => team.name === teamName) || teams[0]; // Fallback para suporte
   }
 
   async handleButtonInteraction(interaction: any) {
     const customId = interaction.customId;
 
-    if (customId.startsWith('close_ticket_')) {
-      const ticketId = customId.replace('close_ticket_', '');
-      await this.closeTicketById(interaction, ticketId);
-    } else if (customId.startsWith('priority_high_')) {
+    if (customId.startsWith('priority_high_')) {
       const ticketId = customId.replace('priority_high_', '');
       await this.setTicketPriority(interaction, ticketId, 'high');
+    } else if (customId.startsWith('select_client_')) {
+      const clientId = customId.replace('select_client_', '');
+      await this.handleClientSelected(interaction, clientId);
+    } else if (customId.startsWith('open_form_')) {
+      const clientId = customId.replace('open_form_', '');
+      await this.handleOpenForm(interaction, clientId);
+    } else if (customId.startsWith('pull_ticket_')) {
+      const ticketId = customId.replace('pull_ticket_', '');
+      await this.handlePullTicket(interaction, ticketId);
+    } else if (customId.startsWith('in_progress_')) {
+      const ticketId = customId.replace('in_progress_', '');
+      await this.handleTicketStatusChange(interaction, ticketId, 'in_progress');
+    } else if (customId.startsWith('waiting_client_')) {
+      const ticketId = customId.replace('waiting_client_', '');
+      await this.handleTicketStatusChange(
+        interaction,
+        ticketId,
+        'waiting_client',
+      );
+    } else if (customId.startsWith('archive_thread_')) {
+      const ticketId = customId.replace('archive_thread_', '');
+      await this.handleArchiveThread(interaction, ticketId);
     } else {
       // Delegar para FormHandlerService para outros tipos de botões
       await this.formHandlerService.handleButtonInteraction(interaction);
     }
   }
 
-  private async closeTicketById(interaction: any, ticketId: string) {
+  private async handlePullTicket(interaction: any, ticketId: string) {
+    try {
+      // Buscar ticket no banco de dados
+      const ticket = await this.ticketRepository.findOne({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        await interaction.reply({
+          content: '❌ Ticket não encontrado!',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      // Verificar se o ticket já foi atribuído
+      if (ticket.assignedTo) {
+        await interaction.reply({
+          content: `❌ Este ticket já foi atribuído a <@${ticket.assignedTo}>!`,
+          ephemeral: true,
+        });
+        return;
+      }
+
+      // Verificar se o usuário pertence à equipe (por enquanto, permitir qualquer usuário)
+      // TODO: Implementar verificação de permissões da equipe
+
+      // Atribuir ticket ao usuário
+      await this.assignTicketToUser(ticketId, interaction.user.id);
+
+      // Atualizar nome da thread para indicar que foi atribuído
+      if (interaction.channel && interaction.channel.isThread()) {
+        const newThreadName = `🟢 🎫 ${ticket.metadata?.clientName || 'Cliente'}`;
+        await interaction.channel.setName(newThreadName);
+      }
+
+      // Atualizar embed da thread
+      let updatedEmbed = new EmbedBuilder()
+        .setTitle(`🎫 Ticket #${ticket.id}`)
+        .setDescription(
+          `**Cliente:** ${ticket.metadata?.clientName || 'N/A'}\n**Categoria:** ${ticket.metadata?.category || 'N/A'}\n**Prioridade:** ${ticket.priority}`,
+        )
+        .addFields(
+          {
+            name: 'Status',
+            value: '🟢 **ATRIBUÍDO** - Responsável definido',
+            inline: true,
+          },
+          {
+            name: 'Equipe',
+            value: ticket.metadata?.team || 'N/A',
+            inline: true,
+          },
+          {
+            name: 'Responsável',
+            value: `<@${interaction.user.id}>`,
+            inline: true,
+          },
+        )
+        .setColor(0x00ff00)
+        .setTimestamp()
+        .setFooter({ text: `Atribuído por ${interaction.user.tag}` });
+
+      // Adicionar campos específicos baseados na categoria
+      if (
+        ticket.metadata?.category === 'new-tagging' &&
+        ticket.metadata?.formData
+      ) {
+        updatedEmbed = updatedEmbed.addFields(
+          {
+            name: 'Meta Account ID',
+            value: ticket.metadata.formData.metaAccountId || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Google Ads ID',
+            value: ticket.metadata.formData.googleAdsAccountId || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Facebook Pixel ID',
+            value: ticket.metadata.formData.facebookPixelId || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Informações Adicionais',
+            value: ticket.metadata.formData.additionalInfo || 'Nenhuma',
+            inline: false,
+          },
+        );
+      } else if (
+        ticket.metadata?.category === 'correction-tagging' &&
+        ticket.metadata?.formData
+      ) {
+        updatedEmbed = updatedEmbed.addFields(
+          {
+            name: 'Site',
+            value: ticket.metadata.formData.website || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Descrição do Problema',
+            value: ticket.metadata.formData.problemDescription || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Informações Adicionais',
+            value: ticket.metadata.formData.additionalInfo || 'Nenhuma',
+            inline: false,
+          },
+        );
+      }
+
+      // Botões atualizados
+      const inProgressButton = new ButtonBuilder()
+        .setCustomId(`in_progress_${ticketId}`)
+        .setLabel('Em progresso')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('⚡');
+
+      const waitingClientButton = new ButtonBuilder()
+        .setCustomId(`waiting_client_${ticketId}`)
+        .setLabel('Aguardando cliente')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('⏳');
+
+      const archiveButton = new ButtonBuilder()
+        .setCustomId(`archive_thread_${ticketId}`)
+        .setLabel('Arquivar')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('📁');
+
+      const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        inProgressButton,
+        waitingClientButton,
+        archiveButton,
+      );
+
+      await interaction.update({
+        embeds: [updatedEmbed],
+        components: [buttonRow],
+      });
+
+      // Notificar no canal da equipe
+      await this.notifyTeamAssignment(ticket, interaction.user);
+    } catch (error) {
+      this.logger.error('Erro ao puxar ticket:', error);
+      await interaction.reply({
+        content: '❌ Erro ao puxar ticket. Tente novamente.',
+        ephemeral: true,
+      });
+    }
+  }
+
+  private async assignTicketToUser(
+    ticketId: string,
+    userId: string,
+  ): Promise<void> {
+    const ticket = await this.ticketRepository.findOne({
+      where: { id: ticketId },
+    });
+    if (!ticket) {
+      throw new Error('Ticket não encontrado');
+    }
+
+    await this.ticketRepository.update(ticketId, {
+      status: 'assigned',
+      assignedTo: userId,
+      metadata: {
+        ...ticket.metadata,
+        assignedAt: new Date().toISOString(),
+      } as Record<string, any>,
+    });
+  }
+
+  private async notifyTeamAssignment(ticket: any, user: any): Promise<void> {
+    try {
+      // Enviar notificação no canal da equipe
+      const team = this.getTeamByName(
+        ticket.metadata?.team || 'Suporte Técnico',
+      );
+      if (team?.channelId) {
+        const channel =
+          await this.teamsService.discordBot.client.channels.fetch(
+            team.channelId,
+          );
+        if (channel && channel.isTextBased() && 'send' in channel) {
+          await (channel as any).send({
+            content: `🎯 **Ticket #${ticket.id}** foi atribuído a <@${user.id}> por <@${user.id}>!`,
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  `**Cliente:** ${ticket.metadata?.clientName || 'N/A'}\n**Status:** Atribuído`,
+                )
+                .setColor(0x00ff00)
+                .setTimestamp(),
+            ],
+          });
+        }
+      }
+    } catch (error) {
+      this.logger.error('Erro ao notificar atribuição:', error);
+    }
+  }
+
+  private async handleTicketStatusChange(
+    interaction: any,
+    ticketId: string,
+    newStatus: string,
+  ) {
     try {
       const ticket = await this.ticketRepository.findOne({
         where: { id: ticketId },
@@ -536,28 +581,179 @@ export class DiscordService {
         return;
       }
 
-      ticket.status = 'closed';
-      ticket.metadata = {
-        ...ticket.metadata,
-        closedBy: interaction.user.tag,
-        closedAt: new Date().toISOString(),
-      };
+      // Verificar se o usuário é o responsável pelo ticket
+      if (ticket.assignedTo !== interaction.user.id) {
+        await interaction.reply({
+          content: '❌ Apenas o responsável pelo ticket pode alterar o status!',
+          ephemeral: true,
+        });
+        return;
+      }
 
-      await this.ticketRepository.save(ticket);
+      // Atualizar status do ticket
+      await this.ticketRepository.update(ticketId, {
+        status: newStatus,
+        metadata: {
+          ...ticket.metadata,
+          statusChangedAt: new Date().toISOString(),
+          statusChangedBy: interaction.user.id,
+        } as Record<string, any>,
+      });
 
-      const embed = new EmbedBuilder()
-        .setTitle('🎫 Ticket Fechado')
-        .setDescription(`Ticket **${ticket.title}** foi fechado com sucesso!`)
-        .setColor(0xff0000)
-        .setTimestamp();
+      // Atualizar embed da thread
+      const statusEmoji = newStatus === 'in_progress' ? '⚡' : '⏳';
+      const statusText =
+        newStatus === 'in_progress'
+          ? '**EM PROGRESSO** - Trabalhando no ticket'
+          : '**AGUARDANDO CLIENTE** - Resposta pendente';
 
-      await interaction.update({ embeds: [embed], components: [] });
+      const updatedEmbed = new EmbedBuilder()
+        .setTitle(`🎫 Ticket #${ticket.id}`)
+        .setDescription(
+          `**Cliente:** ${ticket.metadata?.clientName || 'N/A'}\n**Categoria:** ${ticket.metadata?.category || 'N/A'}\n**Prioridade:** ${ticket.priority}`,
+        )
+        .addFields(
+          {
+            name: 'Status',
+            value: `${statusEmoji} ${statusText}`,
+            inline: true,
+          },
+          {
+            name: 'Equipe',
+            value: ticket.metadata?.team || 'N/A',
+            inline: true,
+          },
+          {
+            name: 'Responsável',
+            value: `<@${interaction.user.id}>`,
+            inline: true,
+          },
+        )
+        .setColor(newStatus === 'in_progress' ? 0x00ff00 : 0xffaa00)
+        .setTimestamp()
+        .setFooter({ text: `Status alterado por ${interaction.user.tag}` });
+
+      // Botões atualizados
+      const inProgressButton = new ButtonBuilder()
+        .setCustomId(`in_progress_${ticketId}`)
+        .setLabel('Em progresso')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('⚡')
+        .setDisabled(newStatus === 'in_progress');
+
+      const waitingClientButton = new ButtonBuilder()
+        .setCustomId(`waiting_client_${ticketId}`)
+        .setLabel('Aguardando cliente')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('⏳')
+        .setDisabled(newStatus === 'waiting_client');
+
+      const archiveButton = new ButtonBuilder()
+        .setCustomId(`archive_thread_${ticketId}`)
+        .setLabel('Arquivar')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('📁');
+
+      const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        inProgressButton,
+        waitingClientButton,
+        archiveButton,
+      );
+
+      await interaction.update({
+        embeds: [updatedEmbed],
+        components: [buttonRow],
+      });
+
+      // Atualizar nome da thread baseado no status
+      if (interaction.channel && interaction.channel.isThread()) {
+        const statusEmoji = newStatus === 'in_progress' ? '⚡' : '⏳';
+        const newThreadName = `${statusEmoji} 🎫 ${ticket.metadata?.clientName || 'Cliente'}`;
+        await interaction.channel.setName(newThreadName);
+      }
     } catch (error) {
-      this.logger.error('Erro ao fechar ticket por ID:', error);
+      this.logger.error('Erro ao alterar status do ticket:', error);
       await interaction.reply({
-        content: '❌ Erro ao fechar ticket!',
+        content: '❌ Erro ao alterar status. Tente novamente.',
         ephemeral: true,
       });
+    }
+  }
+
+  private async handleArchiveThread(interaction: any, ticketId: string) {
+    try {
+      const ticket = await this.ticketRepository.findOne({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        await interaction.reply({
+          content: '❌ Ticket não encontrado!',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      // Verificar se o usuário tem permissão para arquivar
+      // Criador, responsável ou admin podem arquivar
+      const canArchive =
+        ticket.discordUserId === interaction.user.id ||
+        ticket.assignedTo === interaction.user.id;
+      // TODO: Adicionar verificação de admin
+
+      if (!canArchive) {
+        await interaction.reply({
+          content:
+            '❌ Apenas o criador, responsável ou admin podem arquivar a thread!',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      // Responder primeiro antes de arquivar
+      await interaction.reply({
+        content: '✅ Thread arquivada com sucesso!',
+        ephemeral: true,
+      });
+
+      // Arquivar a thread
+      if (interaction.channel && interaction.channel.isThread()) {
+        // Atualizar status do ticket
+        await this.ticketRepository.update(ticketId, {
+          status: 'archived',
+          metadata: {
+            ...ticket.metadata,
+            archivedBy: interaction.user.id,
+            archivedAt: new Date().toISOString(),
+          } as Record<string, any>,
+        });
+
+        // Arquivar a thread por último
+        await interaction.channel.setArchived(true);
+      } else {
+        // Se não for thread, apenas responder
+        await interaction.editReply({
+          content: '❌ Este comando só pode ser usado em threads!',
+        });
+      }
+    } catch (error) {
+      this.logger.error('Erro ao arquivar thread:', error);
+
+      // Tentar responder apenas se a interação ainda estiver ativa
+      try {
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({
+            content: '❌ Erro ao arquivar thread. Tente novamente.',
+            ephemeral: true,
+          });
+        } else if (interaction.deferred) {
+          await interaction.editReply({
+            content: '❌ Erro ao arquivar thread. Tente novamente.',
+          });
+        }
+      } catch (replyError) {
+        this.logger.error('Erro ao responder interação:', replyError);
+      }
     }
   }
 
@@ -606,54 +802,226 @@ export class DiscordService {
     }
   }
 
-  /**
-   * Mostra informações sobre as equipes configuradas
-   */
-  async showTeamsInfo(message: Message) {
+  private async handleClientSelectionFlow(interaction: any) {
     try {
-      const teamsInfo = await this.teamsService.listTeamChannels();
+      // Buscar clientes na Leadfy (usando qualquer um dos serviços)
+      const clients = await this.correctionTaggingService.getAllClients();
 
+      if (clients.length === 0) {
+        await interaction.editReply({
+          content:
+            '❌ Nenhum cliente encontrado na Leadfy. Tente novamente mais tarde.',
+        });
+        return;
+      }
+
+      // Mostrar seleção de cliente
       const embed = new EmbedBuilder()
-        .setTitle('👥 Informações das Equipes')
-        .setDescription(teamsInfo)
+        .setTitle('🔍 Seleção de Cliente')
+        .setDescription('Escolha o cliente para o qual deseja criar o ticket')
         .setColor(0x0099ff)
-        .setTimestamp()
-        .setFooter({ text: 'Sistema de Tickets Discord' });
+        .setFooter({ text: `Total de ${clients.length} clientes encontrados` });
 
-      await message.reply({ embeds: [embed] });
+      const buttonRows = this.createClientSelectionButtons(clients);
+
+      await interaction.editReply({
+        embeds: [embed],
+        components: buttonRows,
+      });
     } catch (error) {
-      this.logger.error('Erro ao mostrar informações das equipes:', error);
-      await message.reply('❌ Erro ao carregar informações das equipes.');
+      this.logger.error('Erro no fluxo de seleção de cliente:', error);
+      await interaction.editReply({
+        content: '❌ Erro ao buscar clientes. Tente novamente.',
+      });
     }
   }
 
-  /**
-   * Mostra estatísticas das equipes
-   */
-  async showTeamStats(message: Message) {
-    try {
-      const stats = await this.teamsService.getTeamStats();
+  private createClientSelectionButtons(
+    clients: any[],
+  ): ActionRowBuilder<ButtonBuilder>[] {
+    const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+    const maxButtonsPerRow = 5;
 
-      const embed = new EmbedBuilder()
-        .setTitle('📊 Estatísticas das Equipes')
-        .setDescription('Informações sobre canais e membros das equipes:')
-        .setColor(0x00ff00)
-        .setTimestamp()
-        .setFooter({ text: 'Sistema de Tickets Discord' });
+    for (let i = 0; i < clients.length; i += maxButtonsPerRow) {
+      const row = new ActionRowBuilder<ButtonBuilder>();
+      const clientBatch = clients.slice(i, i + maxButtonsPerRow);
 
-      stats.forEach((stat) => {
-        embed.addFields({
-          name: `${stat.team.emoji} ${stat.team.name}`,
-          value: `📺 **Canal:** ${stat.channelName}\n👥 **Membros:** ${stat.memberCount}`,
-          inline: true,
-        });
+      clientBatch.forEach((client) => {
+        const button = new ButtonBuilder()
+          .setCustomId(`select_client_${client.id}`)
+          .setLabel(
+            client.name.length > 20
+              ? client.name.substring(0, 17) + '...'
+              : client.name,
+          )
+          .setStyle(ButtonStyle.Primary);
+
+        row.addComponents(button);
       });
 
-      await message.reply({ embeds: [embed] });
-    } catch (error) {
-      this.logger.error('Erro ao mostrar estatísticas das equipes:', error);
-      await message.reply('❌ Erro ao carregar estatísticas das equipes.');
+      rows.push(row);
     }
+
+    return rows;
+  }
+
+  private async handleClientSelected(interaction: any, clientId: string) {
+    try {
+      // Buscar dados do cliente
+      const clients = await this.correctionTaggingService.getAllClients();
+      const selectedClient = clients.find((client) => client.id == clientId);
+
+      if (!selectedClient) {
+        await interaction.editReply({
+          content: '❌ Cliente não encontrado. Tente novamente.',
+        });
+        return;
+      }
+
+      // Criar embed com informações do cliente selecionado
+      const embed = new EmbedBuilder()
+        .setTitle('🎫 Configuração do Ticket')
+        .setDescription(`Cliente selecionado: **${selectedClient.name}**`)
+        .setColor(0x00ff00)
+        .addFields(
+          {
+            name: '🆔 ID do Cliente',
+            value: String(selectedClient.id),
+            inline: true,
+          },
+          { name: '📝 Nome', value: selectedClient.name, inline: true },
+        )
+        .setFooter({ text: 'Configure as opções do ticket abaixo' });
+
+      // Criar menus de seleção
+      const categorySelect = this.createCategorySelectMenu(clientId);
+      const teamSelect = this.createTeamSelectMenu(clientId);
+      const prioritySelect = this.createPrioritySelectMenu(clientId);
+
+      await interaction.editReply({
+        embeds: [embed],
+        components: [categorySelect, teamSelect, prioritySelect],
+      });
+    } catch (error) {
+      this.logger.error('Erro ao processar seleção de cliente:', error);
+      await interaction.editReply({
+        content: '❌ Erro ao processar seleção. Tente novamente.',
+      });
+    }
+  }
+
+  private createCategorySelectMenu(
+    clientId: string,
+    selectedCategory?: string,
+  ): ActionRowBuilder<StringSelectMenuBuilder> {
+    const select = new StringSelectMenuBuilder()
+      .setCustomId(`select_category_${clientId}`)
+      .setPlaceholder(
+        selectedCategory
+          ? `Categoria: ${selectedCategory === 'correction-tagging' ? 'Correção' : 'Novo'}`
+          : 'Selecione a categoria do ticket',
+      )
+      .setDisabled(false) // Sempre habilitado para permitir mudança
+      .addOptions([
+        {
+          label: 'Correção de Tagueamento',
+          description: 'Corrigir problemas de tagueamento existente',
+          value: 'correction-tagging',
+          emoji: '🔧',
+          default: selectedCategory === 'correction-tagging',
+        },
+        {
+          label: 'Novo Tagueamento',
+          description: 'Configurar novo sistema de tagueamento',
+          value: 'new-tagging',
+          emoji: '🆕',
+          default: selectedCategory === 'new-tagging',
+        },
+      ]);
+
+    return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      select,
+    );
+  }
+
+  private createTeamSelectMenu(
+    clientId: string,
+    selectedTeam?: string,
+  ): ActionRowBuilder<StringSelectMenuBuilder> {
+    const select = new StringSelectMenuBuilder()
+      .setCustomId(`select_team_${clientId}`)
+      .setPlaceholder(
+        selectedTeam ? 'Equipe selecionada' : 'Selecione a equipe responsável',
+      )
+      .setDisabled(!!selectedTeam)
+      .addOptions([
+        {
+          label: 'Suporte Técnico',
+          description: 'Equipe de suporte técnico',
+          value: 'suporte',
+          emoji: '🔧',
+          default: selectedTeam === 'suporte',
+        },
+        {
+          label: 'Customer Success',
+          description: 'Equipe de Customer Success',
+          value: 'cs',
+          emoji: '💼',
+          default: selectedTeam === 'cs',
+        },
+        {
+          label: 'Tráfego Pago',
+          description: 'Equipe de tráfego pago',
+          value: 'trafico',
+          emoji: '📈',
+          default: selectedTeam === 'trafico',
+        },
+      ]);
+
+    return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      select,
+    );
+  }
+
+  private createPrioritySelectMenu(
+    clientId: string,
+    selectedPriority?: string,
+  ): ActionRowBuilder<StringSelectMenuBuilder> {
+    const select = new StringSelectMenuBuilder()
+      .setCustomId(`select_priority_${clientId}`)
+      .setPlaceholder(
+        selectedPriority
+          ? 'Prioridade selecionada'
+          : 'Selecione a prioridade do ticket',
+      )
+      .setDisabled(!!selectedPriority)
+      .addOptions([
+        {
+          label: 'Alta',
+          description: 'Prioridade alta - urgente',
+          value: 'high',
+          emoji: '🔴',
+          default: selectedPriority === 'high',
+        },
+        {
+          label: 'Média',
+          description: 'Prioridade média - normal',
+          value: 'medium',
+          emoji: '🟡',
+          default: selectedPriority === 'medium',
+        },
+        {
+          label: 'Baixa',
+          description: 'Prioridade baixa - pode aguardar',
+          value: 'low',
+          emoji: '🟢',
+          default: selectedPriority === 'low',
+        },
+      ]);
+
+    return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      select,
+    );
   }
 
   private async handleCorrectionTaggingFlow(interaction: any) {
@@ -682,6 +1050,318 @@ export class DiscordService {
       this.logger.error('Erro no fluxo de correção de tagueamento:', error);
       await interaction.editReply({
         content: '❌ Erro ao buscar clientes. Tente novamente.',
+      });
+    }
+  }
+
+  private async handleNewTaggingFlow(interaction: any) {
+    try {
+      // Buscar clientes na Leadfy
+      const clients = await this.newTaggingService.getAllClients();
+
+      if (clients.length === 0) {
+        await interaction.editReply({
+          content:
+            '❌ Nenhum cliente encontrado na Leadfy. Tente novamente mais tarde.',
+        });
+        return;
+      }
+
+      // Mostrar seleção de cliente
+      const embed = NewTaggingForm.createClientSelectionEmbed(clients);
+      const buttonRows = NewTaggingForm.createClientSelectionButtons(clients);
+
+      await interaction.editReply({
+        embeds: [embed],
+        components: buttonRows,
+      });
+    } catch (error) {
+      this.logger.error('Erro no fluxo de novo tagueamento:', error);
+      await interaction.editReply({
+        content: '❌ Erro ao buscar clientes. Tente novamente.',
+      });
+    }
+  }
+
+  async handleSelectMenuInteraction(interaction: any) {
+    const customId = interaction.customId;
+
+    if (customId.startsWith('select_category_')) {
+      const clientId = customId.replace('select_category_', '');
+      const category = interaction.values[0];
+      await this.handleCategorySelected(interaction, clientId, category);
+    } else if (customId.startsWith('select_team_')) {
+      const clientId = customId.replace('select_team_', '');
+      const team = interaction.values[0];
+      await this.handleTeamSelected(interaction, clientId, team);
+    } else if (customId.startsWith('select_priority_')) {
+      const clientId = customId.replace('select_priority_', '');
+      const priority = interaction.values[0];
+      await this.handlePrioritySelected(interaction, clientId, priority);
+    } else {
+      // Para outros tipos de seleção, responder com erro
+      await interaction.reply({
+        content: '❌ Tipo de seleção não reconhecido.',
+        ephemeral: true,
+      });
+    }
+  }
+
+  private async handleCategorySelected(
+    interaction: any,
+    clientId: string,
+    category: string,
+  ) {
+    try {
+      // Defer a resposta para select menus
+      await interaction.deferUpdate();
+
+      // Armazenar a categoria selecionada na sessão do usuário
+      const sessionKey = `${interaction.user.id}_${clientId}`;
+      if (!this.userSessions.has(sessionKey)) {
+        this.userSessions.set(sessionKey, { clientId });
+      }
+      const session = this.userSessions.get(sessionKey);
+      session.category = category;
+      // Limpar seleções anteriores ao trocar categoria
+      delete session.team;
+      delete session.priority;
+      this.userSessions.set(sessionKey, session);
+
+      // Buscar dados do cliente
+      const clients = await this.correctionTaggingService.getAllClients();
+      const selectedClient = clients.find((client) => client.id == clientId);
+
+      if (!selectedClient) {
+        await interaction.editReply({
+          content: '❌ Cliente não encontrado. Tente novamente.',
+        });
+        return;
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle('🎫 Configuração do Ticket')
+        .setDescription(
+          `Cliente: **${selectedClient.name}**\nCategoria: **${category === 'correction-tagging' ? 'Correção de Tagueamento' : 'Novo Tagueamento'}**\n\n⚠️ Categoria alterada! Selecione novamente a equipe e prioridade.`,
+        )
+        .setColor(0xffaa00)
+        .setFooter({ text: 'Configure a equipe e prioridade' });
+
+      // Mostrar todos os menus, mas com categoria desabilitada
+      const categorySelect = this.createCategorySelectMenu(clientId, category);
+      const teamSelect = this.createTeamSelectMenu(clientId);
+      const prioritySelect = this.createPrioritySelectMenu(clientId);
+
+      await interaction.editReply({
+        embeds: [embed],
+        components: [categorySelect, teamSelect, prioritySelect],
+      });
+    } catch (error) {
+      this.logger.error('Erro ao processar seleção de categoria:', error);
+      await interaction.editReply({
+        content: '❌ Erro ao processar seleção. Tente novamente.',
+      });
+    }
+  }
+
+  private async handleTeamSelected(
+    interaction: any,
+    clientId: string,
+    team: string,
+  ) {
+    try {
+      // Defer a resposta para select menus
+      await interaction.deferUpdate();
+
+      // Armazenar a equipe selecionada na sessão do usuário
+      const sessionKey = `${interaction.user.id}_${clientId}`;
+      if (!this.userSessions.has(sessionKey)) {
+        this.userSessions.set(sessionKey, { clientId });
+      }
+      const session = this.userSessions.get(sessionKey);
+      session.team = team;
+      this.userSessions.set(sessionKey, session);
+
+      // Buscar dados do cliente
+      const clients = await this.correctionTaggingService.getAllClients();
+      const selectedClient = clients.find((client) => client.id == clientId);
+
+      if (!selectedClient) {
+        await interaction.editReply({
+          content: '❌ Cliente não encontrado. Tente novamente.',
+        });
+        return;
+      }
+
+      const categoryText =
+        session?.category === 'correction-tagging'
+          ? 'Correção de Tagueamento'
+          : 'Novo Tagueamento';
+
+      const embed = new EmbedBuilder()
+        .setTitle('🎫 Configuração do Ticket')
+        .setDescription(
+          `Cliente: **${selectedClient.name}**\nCategoria: **${categoryText}**\nEquipe: **${team}**`,
+        )
+        .setColor(0x00ff00)
+        .setFooter({ text: 'Configure a prioridade' });
+
+      // Mostrar todos os menus, mas com equipe desabilitada
+      const categorySelect = this.createCategorySelectMenu(
+        clientId,
+        session?.category,
+      );
+      const teamSelect = this.createTeamSelectMenu(clientId, team);
+      const prioritySelect = this.createPrioritySelectMenu(clientId);
+
+      await interaction.editReply({
+        embeds: [embed],
+        components: [categorySelect, teamSelect, prioritySelect],
+      });
+    } catch (error) {
+      this.logger.error('Erro ao processar seleção de equipe:', error);
+      await interaction.editReply({
+        content: '❌ Erro ao processar seleção. Tente novamente.',
+      });
+    }
+  }
+
+  private async handlePrioritySelected(
+    interaction: any,
+    clientId: string,
+    priority: string,
+  ) {
+    try {
+      // Defer a resposta para select menus
+      await interaction.deferUpdate();
+
+      // Armazenar a prioridade selecionada na sessão do usuário
+      const sessionKey = `${interaction.user.id}_${clientId}`;
+      if (!this.userSessions.has(sessionKey)) {
+        this.userSessions.set(sessionKey, { clientId });
+      }
+      const session = this.userSessions.get(sessionKey);
+      session.priority = priority;
+      this.userSessions.set(sessionKey, session);
+
+      // Buscar dados do cliente
+      const clients = await this.correctionTaggingService.getAllClients();
+      const selectedClient = clients.find((client) => client.id == clientId);
+
+      if (!selectedClient) {
+        await interaction.editReply({
+          content: '❌ Cliente não encontrado. Tente novamente.',
+        });
+        return;
+      }
+
+      const categoryText =
+        session?.category === 'correction-tagging'
+          ? 'Correção de Tagueamento'
+          : 'Novo Tagueamento';
+      const priorityText =
+        priority === 'high'
+          ? 'Alta'
+          : priority === 'medium'
+            ? 'Média'
+            : 'Baixa';
+
+      const embed = new EmbedBuilder()
+        .setTitle('🎫 Configuração Completa')
+        .setDescription(
+          `Cliente: **${selectedClient.name}**\nCategoria: **${categoryText}**\nEquipe: **${session?.team}**\nPrioridade: **${priorityText}**`,
+        )
+        .setColor(0x00ff00)
+        .setFooter({ text: 'Agora preencha o formulário específico' });
+
+      // Mostrar todos os menus desabilitados e botão para formulário
+      const categorySelect = this.createCategorySelectMenu(
+        clientId,
+        session?.category,
+      );
+      const teamSelect = this.createTeamSelectMenu(clientId, session?.team);
+      const prioritySelect = this.createPrioritySelectMenu(clientId, priority);
+
+      // Criar botão para abrir o formulário
+      const button = new ButtonBuilder()
+        .setCustomId(`open_form_${clientId}`)
+        .setLabel('Preencher Formulário')
+        .setStyle(ButtonStyle.Success);
+
+      const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        button,
+      );
+
+      await interaction.editReply({
+        embeds: [embed],
+        components: [categorySelect, teamSelect, prioritySelect, buttonRow],
+      });
+    } catch (error) {
+      this.logger.error('Erro ao processar seleção de prioridade:', error);
+      await interaction.editReply({
+        content: '❌ Erro ao processar seleção. Tente novamente.',
+      });
+    }
+  }
+
+  private async handleOpenForm(interaction: any, clientId: string) {
+    try {
+      // Buscar dados da sessão do usuário
+      const sessionKey = `${interaction.user.id}_${clientId}`;
+      const session = this.userSessions.get(sessionKey);
+
+      if (!session) {
+        await interaction.reply({
+          content: '❌ Sessão expirada. Tente criar o ticket novamente.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      const category = session.category || 'correction-tagging';
+      const team = session.team || 'suporte';
+      const priority = session.priority || 'medium';
+
+      // Buscar dados do cliente
+      const clients = await this.correctionTaggingService.getAllClients();
+      const selectedClient = clients.find((client) => client.id == clientId);
+
+      if (!selectedClient) {
+        await interaction.reply({
+          content: '❌ Cliente não encontrado. Tente novamente.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      // Criar modal baseado na categoria
+      if (category === 'correction-tagging') {
+        const modal = CorrectionTaggingForm.createModal(
+          clientId,
+          selectedClient,
+          team,
+          priority,
+        );
+        await interaction.showModal(modal);
+      } else if (category === 'new-tagging') {
+        const modal = NewTaggingForm.createModal(
+          clientId,
+          selectedClient,
+          team,
+          priority,
+        );
+        await interaction.showModal(modal);
+      } else {
+        await interaction.reply({
+          content: '❌ Categoria não reconhecida.',
+          ephemeral: true,
+        });
+      }
+    } catch (error) {
+      this.logger.error('Erro ao abrir formulário:', error);
+      await interaction.reply({
+        content: '❌ Erro ao abrir formulário. Tente novamente.',
+        ephemeral: true,
       });
     }
   }

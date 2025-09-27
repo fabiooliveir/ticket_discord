@@ -5,19 +5,14 @@ async function setupDiscordCommands() {
   const commands = [
     {
       name: 'criar-ticket',
-      description: 'Cria um novo ticket de suporte',
+      description: 'Cria um novo ticket para qualquer equipe',
       options: [
         {
-          name: 'titulo',
-          description: 'Título do ticket',
-          type: 3,
+          name: 'cliente',
+          description: 'Selecione o cliente para o ticket',
+          type: 3, // STRING
           required: true,
-        },
-        {
-          name: 'descricao',
-          description: 'Descrição detalhada do problema',
-          type: 3,
-          required: false,
+          autocomplete: true,
         },
       ],
     },

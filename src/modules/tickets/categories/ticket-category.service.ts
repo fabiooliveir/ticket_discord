@@ -75,8 +75,72 @@ export class TicketCategoryService {
       ],
     };
 
+    // Categoria: Novo Tagueamento
+    const newTagging: TicketCategory = {
+      id: 'new-tagging',
+      name: 'Novo Tagueamento',
+      description: 'Tickets para configuração de novos sistemas de tagueamento',
+      team: 'trafico',
+      priority: 'medium',
+      requiresClient: true,
+      formFields: [
+        {
+          id: 'metaAccountId',
+          label: 'ID de Conta Meta',
+          type: 'text',
+          required: true,
+          placeholder: 'Ex: 123456789',
+        },
+        {
+          id: 'googleAdsAccountId',
+          label: 'ID de Conta Google Ads',
+          type: 'text',
+          required: true,
+          placeholder: 'Ex: 123-456-7890',
+        },
+        {
+          id: 'facebookPixelId',
+          label: 'ID de Pixel Facebook',
+          type: 'text',
+          required: true,
+          placeholder: 'Ex: 123456789012345',
+        },
+        {
+          id: 'additionalInfo',
+          label: 'Informações adicionais (opcional)',
+          type: 'textarea',
+          required: false,
+          placeholder: 'Qualquer informação adicional relevante...',
+        },
+        {
+          id: 'team',
+          label: 'Time responsável',
+          type: 'select',
+          required: true,
+          options: [
+            { label: 'Suporte Técnico', value: 'suporte' },
+            { label: 'Customer Success', value: 'cs' },
+            { label: 'Tráfego Pago', value: 'trafico' },
+          ],
+        },
+        {
+          id: 'priority',
+          label: 'Prioridade',
+          type: 'select',
+          required: true,
+          options: [
+            { label: '🔴 Alta', value: 'high' },
+            { label: '🟡 Média', value: 'medium' },
+            { label: '🟢 Baixa', value: 'low' },
+          ],
+        },
+      ],
+    };
+
     this.categories.set('correction-tagging', correctionTagging);
+    this.categories.set('new-tagging', newTagging);
     this.logger.log(`Categoria 'correction-tagging' inicializada`);
+    this.logger.log(`Categoria 'new-tagging' inicializada`);
   }
 
   getCategory(categoryId: string): TicketCategory | null {
@@ -137,6 +201,8 @@ export class TicketCategoryService {
     switch (categoryId) {
       case 'correction-tagging':
         return this.buildCorrectionTaggingDescription(data);
+      case 'new-tagging':
+        return this.buildNewTaggingDescription(data);
       default:
         return `Ticket da categoria ${categoryId}`;
     }
@@ -146,6 +212,22 @@ export class TicketCategoryService {
     let description = `**Cliente:** ${data.clientName}\n`;
     description += `**Site:** ${data.website}\n`;
     description += `**Problema:** ${data.problemDescription}\n`;
+
+    if (data.additionalInfo) {
+      description += `**Informações adicionais:** ${data.additionalInfo}\n`;
+    }
+
+    description += `**Time responsável:** ${data.team}\n`;
+    description += `**Prioridade:** ${data.priority}`;
+
+    return description;
+  }
+
+  private buildNewTaggingDescription(data: CategoryTicketData): string {
+    let description = `**Cliente:** ${data.clientName}\n`;
+    description += `**Meta Account ID:** ${data.metaAccountId}\n`;
+    description += `**Google Ads ID:** ${data.googleAdsAccountId}\n`;
+    description += `**Facebook Pixel ID:** ${data.facebookPixelId}\n`;
 
     if (data.additionalInfo) {
       description += `**Informações adicionais:** ${data.additionalInfo}\n`;

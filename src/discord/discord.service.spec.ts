@@ -6,6 +6,10 @@ import { DiscordBot } from './discord.bot';
 import { TeamsService } from './teams.service';
 import { DatabaseService } from '../database/database.service';
 import { Ticket } from '../database/entities/ticket.entity';
+import { FormHandlerService } from './forms/form-handler.service';
+import { TicketCategoryService } from '../modules/tickets/categories/ticket-category.service';
+import { CorrectionTaggingService } from '../modules/tickets/categories/correction-tagging/correction-tagging.service';
+import { NewTaggingService } from '../modules/tickets/categories/new-tagging/new-tagging.service';
 
 describe('DiscordService', () => {
   let service: DiscordService;
@@ -75,6 +79,34 @@ describe('DiscordService', () => {
             listTeamChannels: jest.fn().mockResolvedValue('Test teams info'),
           },
         },
+        {
+          provide: FormHandlerService,
+          useValue: {
+            handleButtonInteraction: jest.fn(),
+            handleModalSubmit: jest.fn(),
+          },
+        },
+        {
+          provide: TicketCategoryService,
+          useValue: {
+            createTicketWithCategory: jest.fn(),
+          },
+        },
+        {
+          provide: CorrectionTaggingService,
+          useValue: {
+            getAllClients: jest.fn().mockResolvedValue([]),
+            getClientById: jest.fn(),
+            searchClients: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: NewTaggingService,
+          useValue: {
+            getAllClients: jest.fn().mockResolvedValue([]),
+            getClientById: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -95,160 +127,67 @@ describe('DiscordService', () => {
       expect(commands).toBeDefined();
       expect(Array.isArray(commands)).toBe(true);
       expect(commands.length).toBe(1);
-      expect(commands[0].name).toBe('ticket');
-      expect(commands[0].options).toHaveLength(3);
+      expect(commands[0].name).toBe('criar-ticket');
+      expect(commands[0].options).toHaveLength(1);
+      expect(commands[0].options[0].name).toBe('cliente');
+      expect(commands[0].options[0].autocomplete).toBe(true);
+      expect(commands[0].options[0].required).toBe(true);
     });
   });
 
-  describe('createTicket', () => {
-    it('should create a ticket successfully', async () => {
-      const mockMessage = {
-        content: '!ticket create Test Ticket',
-        author: { id: 'user123', tag: 'testuser#1234' },
-        channel: { id: 'channel123' },
-        reply: jest.fn(),
-      } as any;
-
-      const mockTicket = {
-        id: 'ticket123',
-        title: 'Test Ticket',
-        status: 'open',
-        priority: 'medium',
-        discordUserId: 'user123',
-        discordChannelId: 'channel123',
+  describe('handleAutocomplete', () => {
+    it('should handle client autocomplete', async () => {
+      const mockInteraction = {
+        commandName: 'criar-ticket',
+        options: [
+          {
+            name: 'cliente',
+            focused: true,
+            value: 'João',
+          },
+        ],
+        respond: jest.fn(),
       };
 
-      mockRepository.create.mockReturnValue(mockTicket);
-      mockRepository.save.mockResolvedValue(mockTicket);
-      mockRepository.findOne.mockResolvedValue(null);
-
-      await service.createTicket(mockMessage, ['Test', 'Ticket']);
-
-      expect(mockRepository.create).toHaveBeenCalled();
-      expect(mockRepository.save).toHaveBeenCalled();
-      expect(mockMessage.reply).toHaveBeenCalled();
-    });
-
-    it('should not create ticket if user already has one open', async () => {
-      const mockMessage = {
-        content: '!ticket create Test Ticket',
-        author: { id: 'user123', tag: 'testuser#1234' },
-        channel: { id: 'channel123' },
-        reply: jest.fn(),
-      } as any;
-
-      const existingTicket = {
-        id: 'existing123',
-        title: 'Existing Ticket',
-        status: 'open',
-      };
-
-      // Reset mocks
-      mockRepository.create.mockClear();
-      mockRepository.save.mockClear();
-      mockRepository.findOne.mockResolvedValue(existingTicket);
-
-      await service.createTicket(mockMessage, ['Test', 'Ticket']);
-
-      expect(mockRepository.create).not.toHaveBeenCalled();
-      expect(mockRepository.save).not.toHaveBeenCalled();
-      expect(mockMessage.reply).toHaveBeenCalledWith(
-        expect.stringContaining('Você já possui um ticket aberto'),
-      );
-    });
-  });
-
-  describe('closeTicket', () => {
-    it('should close a ticket successfully', async () => {
-      const mockMessage = {
-        author: { id: 'user123', tag: 'testuser#1234' },
-        reply: jest.fn(),
-      } as any;
-
-      const mockTicket = {
-        id: 'ticket123',
-        title: 'Test Ticket',
-        status: 'open',
-        metadata: {} as Record<string, any>,
-        save: jest.fn().mockResolvedValue({}),
-      };
-
-      mockRepository.findOne.mockResolvedValue(mockTicket);
-      mockRepository.save.mockResolvedValue(mockTicket);
-
-      await service.closeTicket(mockMessage);
-
-      expect(mockTicket.status).toBe('closed');
-      expect(mockTicket.metadata?.closedBy).toBe('testuser#1234');
-      expect(mockRepository.save).toHaveBeenCalled();
-      expect(mockMessage.reply).toHaveBeenCalled();
-    });
-
-    it('should not close ticket if user has no open tickets', async () => {
-      const mockMessage = {
-        author: { id: 'user123', tag: 'testuser#1234' },
-        reply: jest.fn(),
-      } as any;
-
-      mockRepository.findOne.mockResolvedValue(null);
-
-      await service.closeTicket(mockMessage);
-
-      expect(mockMessage.reply).toHaveBeenCalledWith(
-        expect.stringContaining('Você não possui nenhum ticket aberto'),
-      );
-    });
-  });
-
-  describe('listTickets', () => {
-    it('should list user tickets successfully', async () => {
-      const mockMessage = {
-        author: { id: 'user123', tag: 'testuser#1234' },
-        reply: jest.fn(),
-      } as any;
-
-      const mockTickets = [
-        {
-          id: 'ticket1',
-          title: 'Ticket 1',
-          status: 'open',
-          priority: 'high',
-          createdAt: new Date('2023-01-01'),
-        },
-        {
-          id: 'ticket2',
-          title: 'Ticket 2',
-          status: 'closed',
-          priority: 'medium',
-          createdAt: new Date('2023-01-02'),
-        },
+      const mockClients = [
+        { id: '1', name: 'João Silva' },
+        { id: '2', name: 'João Santos' },
       ];
 
-      mockRepository.find.mockResolvedValue(mockTickets);
+      jest
+        .spyOn(service['correctionTaggingService'], 'searchClients')
+        .mockResolvedValue(mockClients);
 
-      await service.listTickets(mockMessage);
+      await service.handleAutocomplete(mockInteraction);
 
-      expect(mockRepository.find).toHaveBeenCalledWith({
-        where: { discordUserId: 'user123' },
-        order: { createdAt: 'DESC' },
-        take: 10,
-      });
-      expect(mockMessage.reply).toHaveBeenCalled();
+      expect(mockInteraction.respond).toHaveBeenCalledWith([
+        { name: 'João Silva', value: '1' },
+        { name: 'João Santos', value: '2' },
+      ]);
     });
 
-    it('should show message when user has no tickets', async () => {
-      const mockMessage = {
-        author: { id: 'user123', tag: 'testuser#1234' },
-        reply: jest.fn(),
-      } as any;
+    it('should handle autocomplete error gracefully', async () => {
+      const mockInteraction = {
+        commandName: 'criar-ticket',
+        options: [
+          {
+            name: 'cliente',
+            focused: true,
+            value: 'João',
+          },
+        ],
+        respond: jest.fn(),
+      };
 
-      mockRepository.find.mockResolvedValue([]);
+      jest
+        .spyOn(service['correctionTaggingService'], 'searchClients')
+        .mockRejectedValue(new Error('API Error'));
 
-      await service.listTickets(mockMessage);
+      await service.handleAutocomplete(mockInteraction);
 
-      expect(mockMessage.reply).toHaveBeenCalledWith(
-        expect.stringContaining('Você não possui nenhum ticket'),
-      );
+      expect(mockInteraction.respond).toHaveBeenCalledWith([]);
     });
   });
+
+  // Testes dos comandos de texto removidos - apenas slash commands são suportados
 });

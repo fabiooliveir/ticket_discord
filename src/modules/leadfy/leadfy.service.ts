@@ -33,18 +33,28 @@ export class LeadfyService {
         },
       );
 
-      if (response.data.success && response.data.data) {
-        this.logger.log(
-          `✅ ${response.data.data.length} clientes carregados com sucesso`,
-        );
+      // A API retorna um array diretamente, não um objeto com success/data
+      const clients = Array.isArray(response.data)
+        ? response.data
+        : response.data.data;
+
+      this.logger.log(
+        `📊 Resposta da API: ${Array.isArray(response.data) ? 'array direto' : 'objeto com data'}, ${clients?.length || 0} clientes`,
+      );
+
+      if (clients && Array.isArray(clients) && clients.length > 0) {
+        this.logger.log(`✅ ${clients.length} clientes carregados com sucesso`);
 
         // Atualizar cache
-        this.updateCache(response.data.data);
+        this.updateCache(clients);
         this.lastSync = new Date();
 
-        return response.data.data;
+        return clients;
       } else {
         this.logger.warn('⚠️ Resposta da API Leadfy não contém dados válidos');
+        this.logger.warn(
+          `📊 Detalhes: response.data=${JSON.stringify(response.data)}`,
+        );
         return this.getCachedClients();
       }
     } catch (error) {
@@ -72,7 +82,7 @@ export class LeadfyService {
 
       // Se não estiver no cache, buscar todos os clientes
       const clients = await this.getClients();
-      return clients.find((client) => client.id === id) || null;
+      return clients.find((client) => client.id == id) || null;
     } catch (error) {
       this.logger.error(`❌ Erro ao buscar cliente ${id}:`, error.message);
       return null;
@@ -173,13 +183,15 @@ export class LeadfyService {
   private updateCache(clients: LeadfyClient[]): void {
     this.clientsCache.clear();
     clients.forEach((client) => {
-      this.clientsCache.set(client.id, client);
+      this.clientsCache.set(String(client.id), client);
     });
     this.logger.debug(`📦 Cache atualizado com ${clients.length} clientes`);
   }
 
   private getCachedClients(): LeadfyClient[] {
-    return Array.from(this.clientsCache.values());
+    const cachedClients = Array.from(this.clientsCache.values());
+    this.logger.log(`📦 Cache contém ${cachedClients.length} clientes`);
+    return cachedClients;
   }
 
   async healthCheck(): Promise<{
