@@ -9,11 +9,15 @@ import {
   Query,
 } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
+import { TicketCategoryService } from './categories/ticket-category.service';
 import { Ticket } from '../../database/entities/ticket.entity';
 
 @Controller('tickets')
 export class TicketsController {
-  constructor(private readonly ticketsService: TicketsService) {}
+  constructor(
+    private readonly ticketsService: TicketsService,
+    private readonly ticketCategoryService: TicketCategoryService,
+  ) {}
 
   @Post()
   create(
@@ -33,6 +37,11 @@ export class TicketsController {
   @Get('stats')
   getStats() {
     return this.ticketsService.getTicketStats();
+  }
+
+  @Get('categories')
+  getCategories() {
+    return this.ticketCategoryService.getAllCategories();
   }
 
   @Get()

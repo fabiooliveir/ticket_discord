@@ -2,11 +2,14 @@ import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { ModalSubmitInteraction, ButtonInteraction } from 'discord.js';
 import { CorrectionTaggingService } from '../../modules/tickets/categories/correction-tagging/correction-tagging.service';
 import { NewTaggingService } from '../../modules/tickets/categories/new-tagging/new-tagging.service';
+import { BudgetAdjustmentService } from '../../modules/tickets/categories/budget-adjustment/budget-adjustment.service';
 import { TicketCategoryService } from '../../modules/tickets/categories/ticket-category.service';
 import { CorrectionTaggingForm } from '../../modules/tickets/categories/correction-tagging/correction-tagging.form';
 import { NewTaggingForm } from '../../modules/tickets/categories/new-tagging/new-tagging.form';
+import { BudgetAdjustmentForm } from '../../modules/tickets/categories/budget-adjustment/budget-adjustment.form';
 import { CorrectionTaggingFormData } from '../../modules/tickets/categories/correction-tagging/correction-tagging.interface';
 import { NewTaggingFormData } from '../../modules/tickets/categories/new-tagging/new-tagging.interface';
+import { BudgetAdjustmentFormData } from '../../modules/tickets/categories/budget-adjustment/budget-adjustment.interface';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Ticket } from '../../database/entities/ticket.entity';
@@ -21,6 +24,7 @@ export class FormHandlerService {
   constructor(
     private readonly correctionTaggingService: CorrectionTaggingService,
     private readonly newTaggingService: NewTaggingService,
+    private readonly budgetAdjustmentService: BudgetAdjustmentService,
     private readonly ticketCategoryService: TicketCategoryService,
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
@@ -36,6 +40,8 @@ export class FormHandlerService {
       await this.handleCorrectionTaggingModal(interaction);
     } else if (customId.startsWith('new_tagging_form_')) {
       await this.handleNewTaggingModal(interaction);
+    } else if (customId === 'budget_adjustment_form') {
+      await this.handleBudgetAdjustmentModal(interaction);
     } else {
       this.logger.warn(`Modal não reconhecido: ${customId}`);
       await interaction.reply({
@@ -55,13 +61,15 @@ export class FormHandlerService {
     } else if (
       customId === 'confirm_ticket' ||
       customId.startsWith('confirm_ticket_') ||
-      customId === 'confirm_new_tagging_ticket'
+      customId === 'confirm_new_tagging_ticket' ||
+      customId === 'confirm_budget_adjustment'
     ) {
       await this.handleTicketConfirmation(interaction);
     } else if (
       customId === 'cancel_ticket' ||
       customId.startsWith('cancel_ticket_') ||
-      customId === 'cancel_new_tagging_ticket'
+      customId === 'cancel_new_tagging_ticket' ||
+      customId === 'cancel_budget_adjustment'
     ) {
       await this.handleTicketCancellation(interaction);
     } else {
@@ -327,7 +335,11 @@ export class FormHandlerService {
       const categoryText =
         category === 'correction-tagging'
           ? 'Correção de Tagueamento'
-          : 'Novo Tagueamento';
+          : category === 'new-tagging'
+          ? 'Novo Tagueamento'
+          : category === 'budget-adjustment'
+          ? 'Ajuste de Verba'
+          : 'Desconhecida';
 
       // Criar thread do ticket
       const thread = await this.discordService['createTicketThread'](team, {
@@ -361,6 +373,8 @@ export class FormHandlerService {
         specificInfo = `\n**Site:** ${session.formData.website}`;
       } else if (category === 'new-tagging') {
         specificInfo = `\n**Meta Account ID:** ${session.formData.metaAccountId}`;
+      } else if (category === 'budget-adjustment') {
+        specificInfo = `\n**Valor Solicitado:** ${session.formData.requestedAmount}`;
       }
 
       await interaction.reply({
@@ -436,6 +450,99 @@ export class FormHandlerService {
       this.logger.error('Erro ao confirmar ticket:', error);
       await interaction.reply({
         content: '❌ Erro ao confirmar ticket!',
+        ephemeral: true,
+      });
+    }
+  }
+
+  private async handleBudgetAdjustmentModal(
+    interaction: ModalSubmitInteraction,
+  ): Promise<void> {
+    try {
+      // Buscar dados da sessão do DiscordService
+      // Precisamos encontrar o clientId correto
+      let clientId = null;
+      let discordSession: any = null;
+      
+      // Tentar encontrar a sessão do usuário no DiscordService
+      for (const [key, session] of this.discordService['userSessions']) {
+        if (key.startsWith(`${interaction.user.id}_`)) {
+          clientId = session.clientId;
+          discordSession = session;
+          break;
+        }
+      }
+
+      if (!clientId || !discordSession) {
+        await interaction.reply({
+          content: '❌ Sessão expirada. Tente novamente.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      const clientName = discordSession.clientName || 'Cliente';
+      const category = discordSession.category || 'budget-adjustment';
+      const team = discordSession.team || 'trafico';
+      const priority = discordSession.priority || 'medium';
+
+      const formData: BudgetAdjustmentFormData = {
+        adjustmentReason: interaction.fields.getTextInputValue('adjustmentReason'),
+        requestedAmount: interaction.fields.getTextInputValue('requestedAmount'),
+        campaignInfo: interaction.fields.getTextInputValue('campaignInfo') || undefined,
+      };
+
+      // Validar dados do formulário
+      const validation = this.budgetAdjustmentService.validateFormData(formData);
+      if (!validation.isValid) {
+        await interaction.reply({
+          content: `❌ Erro de validação:\n${validation.errors.join('\n')}`,
+          ephemeral: true,
+        });
+        return;
+      }
+
+      // Buscar dados do cliente
+      const client = await this.budgetAdjustmentService.getClientById(clientId);
+      if (!client) {
+        await interaction.reply({
+          content: '❌ Cliente não encontrado!',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      // Armazenar dados da sessão no FormHandlerService
+      this.userSessions.set(interaction.user.id, {
+        clientId,
+        clientName: client.name,
+        formData,
+        ticketData: {
+          clientId,
+          clientName: client.name,
+          category: category,
+          team: team,
+          priority: priority,
+        },
+      });
+
+      // Mostrar confirmação
+      const embed = BudgetAdjustmentForm.createConfirmationEmbed(
+        clientName,
+        formData,
+      );
+
+      const confirmButton = BudgetAdjustmentForm.createConfirmationButtons();
+
+      await interaction.reply({
+        embeds: [embed],
+        components: [confirmButton],
+        ephemeral: true,
+      });
+    } catch (error) {
+      this.logger.error('Erro ao processar formulário de ajuste de verba:', error);
+      await interaction.reply({
+        content: '❌ Erro ao processar formulário!',
         ephemeral: true,
       });
     }

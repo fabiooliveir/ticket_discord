@@ -22,6 +22,8 @@ import { CorrectionTaggingService } from '../modules/tickets/categories/correcti
 import { CorrectionTaggingForm } from '../modules/tickets/categories/correction-tagging/correction-tagging.form';
 import { NewTaggingService } from '../modules/tickets/categories/new-tagging/new-tagging.service';
 import { NewTaggingForm } from '../modules/tickets/categories/new-tagging/new-tagging.form';
+import { BudgetAdjustmentService } from '../modules/tickets/categories/budget-adjustment/budget-adjustment.service';
+import { BudgetAdjustmentForm } from '../modules/tickets/categories/budget-adjustment/budget-adjustment.form';
 
 @Injectable()
 export class DiscordService {
@@ -40,6 +42,7 @@ export class DiscordService {
     private readonly ticketCategoryService: TicketCategoryService,
     private readonly correctionTaggingService: CorrectionTaggingService,
     private readonly newTaggingService: NewTaggingService,
+    private readonly budgetAdjustmentService: BudgetAdjustmentService,
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
   ) {}
@@ -273,6 +276,27 @@ export class DiscordService {
             inline: false,
           },
         );
+      } else if (
+        ticketData.category === 'Ajuste de Verba' &&
+        ticketData.formData
+      ) {
+        embed = embed.addFields(
+          {
+            name: 'Motivo do Ajuste',
+            value: ticketData.formData.adjustmentReason || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Valor Solicitado',
+            value: ticketData.formData.requestedAmount || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Informações da Campanha',
+            value: ticketData.formData.campaignInfo || 'Nenhuma',
+            inline: false,
+          },
+        );
       }
 
       // Botão para puxar ticket
@@ -466,6 +490,27 @@ export class DiscordService {
           {
             name: 'Informações Adicionais',
             value: ticket.metadata.formData.additionalInfo || 'Nenhuma',
+            inline: false,
+          },
+        );
+      } else if (
+        ticket.metadata?.category === 'Ajuste de Verba' &&
+        ticket.metadata?.formData
+      ) {
+        updatedEmbed = updatedEmbed.addFields(
+          {
+            name: 'Motivo do Ajuste',
+            value: ticket.metadata.formData.adjustmentReason || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Valor Solicitado',
+            value: ticket.metadata.formData.requestedAmount || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Informações da Campanha',
+            value: ticket.metadata.formData.campaignInfo || 'Nenhuma',
             inline: false,
           },
         );
@@ -918,7 +963,15 @@ export class DiscordService {
       .setCustomId(`select_category_${clientId}`)
       .setPlaceholder(
         selectedCategory
-          ? `Categoria: ${selectedCategory === 'correction-tagging' ? 'Correção' : 'Novo'}`
+          ? `Categoria: ${
+              selectedCategory === 'correction-tagging' 
+                ? 'Correção' 
+                : selectedCategory === 'new-tagging' 
+                ? 'Novo' 
+                : selectedCategory === 'budget-adjustment'
+                ? 'Ajuste de Verba'
+                : 'Desconhecida'
+            }`
           : 'Selecione a categoria do ticket',
       )
       .setDisabled(false) // Sempre habilitado para permitir mudança
@@ -937,6 +990,13 @@ export class DiscordService {
           emoji: '🆕',
           default: selectedCategory === 'new-tagging',
         },
+        {
+          label: 'Ajuste de Verba',
+          description: 'Solicitar ajustes de verba em campanhas',
+          value: 'budget-adjustment',
+          emoji: '💰',
+          default: selectedCategory === 'budget-adjustment',
+        },
       ]);
 
     return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -951,9 +1011,9 @@ export class DiscordService {
     const select = new StringSelectMenuBuilder()
       .setCustomId(`select_team_${clientId}`)
       .setPlaceholder(
-        selectedTeam ? 'Equipe selecionada' : 'Selecione a equipe responsável',
+        selectedTeam ? `Equipe: ${this.getTeamDisplayName(selectedTeam)}` : 'Selecione a equipe responsável',
       )
-      .setDisabled(!!selectedTeam)
+      .setDisabled(false) // Sempre habilitado para permitir mudança
       .addOptions([
         {
           label: 'Suporte Técnico',
@@ -991,10 +1051,10 @@ export class DiscordService {
       .setCustomId(`select_priority_${clientId}`)
       .setPlaceholder(
         selectedPriority
-          ? 'Prioridade selecionada'
+          ? `Prioridade: ${this.getPriorityDisplayName(selectedPriority)}`
           : 'Selecione a prioridade do ticket',
       )
-      .setDisabled(!!selectedPriority)
+      .setDisabled(false) // Sempre habilitado para permitir mudança
       .addOptions([
         {
           label: 'Alta',
@@ -1142,7 +1202,15 @@ export class DiscordService {
       const embed = new EmbedBuilder()
         .setTitle('🎫 Configuração do Ticket')
         .setDescription(
-          `Cliente: **${selectedClient.name}**\nCategoria: **${category === 'correction-tagging' ? 'Correção de Tagueamento' : 'Novo Tagueamento'}**\n\n⚠️ Categoria alterada! Selecione novamente a equipe e prioridade.`,
+          `Cliente: **${selectedClient.name}**\nCategoria: **${
+            category === 'correction-tagging' 
+              ? 'Correção de Tagueamento' 
+              : category === 'new-tagging'
+              ? 'Novo Tagueamento'
+              : category === 'budget-adjustment'
+              ? 'Ajuste de Verba'
+              : 'Desconhecida'
+          }**\n\n⚠️ Categoria alterada! Selecione novamente a equipe e prioridade.`,
         )
         .setColor(0xffaa00)
         .setFooter({ text: 'Configure a equipe e prioridade' });
@@ -1196,7 +1264,11 @@ export class DiscordService {
       const categoryText =
         session?.category === 'correction-tagging'
           ? 'Correção de Tagueamento'
-          : 'Novo Tagueamento';
+          : session?.category === 'new-tagging'
+          ? 'Novo Tagueamento'
+          : session?.category === 'budget-adjustment'
+          ? 'Ajuste de Verba'
+          : 'Desconhecida';
 
       const embed = new EmbedBuilder()
         .setTitle('🎫 Configuração do Ticket')
@@ -1258,7 +1330,11 @@ export class DiscordService {
       const categoryText =
         session?.category === 'correction-tagging'
           ? 'Correção de Tagueamento'
-          : 'Novo Tagueamento';
+          : session?.category === 'new-tagging'
+          ? 'Novo Tagueamento'
+          : session?.category === 'budget-adjustment'
+          ? 'Ajuste de Verba'
+          : 'Desconhecida';
       const priorityText =
         priority === 'high'
           ? 'Alta'
@@ -1322,8 +1398,13 @@ export class DiscordService {
       const team = session.team || 'suporte';
       const priority = session.priority || 'medium';
 
-      // Buscar dados do cliente
-      const clients = await this.correctionTaggingService.getAllClients();
+      // Buscar dados do cliente baseado na categoria
+      let clients;
+      if (category === 'budget-adjustment') {
+        clients = await this.budgetAdjustmentService.getAllClients();
+      } else {
+        clients = await this.correctionTaggingService.getAllClients();
+      }
       const selectedClient = clients.find((client) => client.id == clientId);
 
       if (!selectedClient) {
@@ -1351,6 +1432,9 @@ export class DiscordService {
           priority,
         );
         await interaction.showModal(modal);
+      } else if (category === 'budget-adjustment') {
+        const modal = BudgetAdjustmentForm.createFormModal();
+        await interaction.showModal(modal);
       } else {
         await interaction.reply({
           content: '❌ Categoria não reconhecida.',
@@ -1368,5 +1452,31 @@ export class DiscordService {
 
   async handleModalSubmit(interaction: any) {
     await this.formHandlerService.handleModalSubmit(interaction);
+  }
+
+  private getTeamDisplayName(team: string): string {
+    switch (team) {
+      case 'suporte':
+        return 'Suporte Técnico';
+      case 'cs':
+        return 'Customer Success';
+      case 'trafico':
+        return 'Tráfego Pago';
+      default:
+        return 'Desconhecida';
+    }
+  }
+
+  private getPriorityDisplayName(priority: string): string {
+    switch (priority) {
+      case 'high':
+        return '🔴 Alta';
+      case 'medium':
+        return '🟡 Média';
+      case 'low':
+        return '🟢 Baixa';
+      default:
+        return 'Desconhecida';
+    }
   }
 }

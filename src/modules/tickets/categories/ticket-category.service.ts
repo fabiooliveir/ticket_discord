@@ -137,10 +137,45 @@ export class TicketCategoryService {
       ],
     };
 
+    // Categoria: Ajuste de Verba
+    const budgetAdjustment: TicketCategory = {
+      id: 'budget-adjustment',
+      name: 'Ajuste de Verba',
+      description: 'Tickets para solicitação de ajustes de verba em campanhas',
+      team: 'trafico',
+      priority: 'medium',
+      requiresClient: true,
+      formFields: [
+        {
+          id: 'adjustmentReason',
+          label: 'Motivo do Ajuste',
+          type: 'textarea',
+          required: true,
+          placeholder: 'Descreva detalhadamente o motivo do ajuste de verba...',
+        },
+        {
+          id: 'requestedAmount',
+          label: 'Valor Solicitado',
+          type: 'text',
+          required: true,
+          placeholder: 'Ex: R$ 1.500,00 ou 15% ou 1500 reais',
+        },
+        {
+          id: 'campaignInfo',
+          label: 'Informações da Campanha (opcional)',
+          type: 'textarea',
+          required: false,
+          placeholder: 'ID da campanha, período, plataforma, etc...',
+        },
+      ],
+    };
+
     this.categories.set('correction-tagging', correctionTagging);
     this.categories.set('new-tagging', newTagging);
+    this.categories.set('budget-adjustment', budgetAdjustment);
     this.logger.log(`Categoria 'correction-tagging' inicializada`);
     this.logger.log(`Categoria 'new-tagging' inicializada`);
+    this.logger.log(`Categoria 'budget-adjustment' inicializada`);
   }
 
   getCategory(categoryId: string): TicketCategory | null {
@@ -203,6 +238,8 @@ export class TicketCategoryService {
         return this.buildCorrectionTaggingDescription(data);
       case 'new-tagging':
         return this.buildNewTaggingDescription(data);
+      case 'budget-adjustment':
+        return this.buildBudgetAdjustmentDescription(data);
       default:
         return `Ticket da categoria ${categoryId}`;
     }
@@ -231,6 +268,21 @@ export class TicketCategoryService {
 
     if (data.additionalInfo) {
       description += `**Informações adicionais:** ${data.additionalInfo}\n`;
+    }
+
+    description += `**Time responsável:** ${data.team}\n`;
+    description += `**Prioridade:** ${data.priority}`;
+
+    return description;
+  }
+
+  private buildBudgetAdjustmentDescription(data: CategoryTicketData): string {
+    let description = `**Cliente:** ${data.clientName}\n`;
+    description += `**Motivo do Ajuste:** ${data.adjustmentReason}\n`;
+    description += `**Valor Solicitado:** ${data.requestedAmount}\n`;
+
+    if (data.campaignInfo) {
+      description += `**Informações da Campanha:** ${data.campaignInfo}\n`;
     }
 
     description += `**Time responsável:** ${data.team}\n`;

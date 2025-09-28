@@ -6,3 +6,6 @@ export * from './correction-tagging/correction-tagging.form';
 export * from './new-tagging/new-tagging.interface';
 export * from './new-tagging/new-tagging.service';
 export * from './new-tagging/new-tagging.form';
+export * from './budget-adjustment/budget-adjustment.interface';
+export * from './budget-adjustment/budget-adjustment.service';
+export * from './budget-adjustment/budget-adjustment.form';
