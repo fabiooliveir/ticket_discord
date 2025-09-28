@@ -95,9 +95,9 @@ const Header: React.FC<HeaderProps> = ({
               color="primary"
               title="Atualizar dados"
               sx={{
-                backgroundColor: theme.palette.primary.main + '10',
+                backgroundColor: `${theme.palette.primary.main}10`,
                 '&:hover': {
-                  backgroundColor: theme.palette.primary.main + '20',
+                  backgroundColor: `${theme.palette.primary.main}20`,
                 },
               }}
             >

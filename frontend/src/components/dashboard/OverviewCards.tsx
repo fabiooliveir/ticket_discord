@@ -198,7 +198,7 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({ data, loading = false }) 
           title="Tickets com Duração"
           value={summary.durationSla.ticketsWithDuration}
           subtitle={`${summary.durationSla.ticketsWithoutDuration} sem duração`}
-          color="info"
+          color="primary"
           icon={<Speed />}
         />
       </Grid>

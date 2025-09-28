@@ -130,9 +130,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                 mx: 1,
                 borderRadius: 2,
                 '&.Mui-selected': {
-                  backgroundColor: theme.palette.primary.main + '15',
+                  backgroundColor: `${theme.palette.primary.main}15`,
                   '&:hover': {
-                    backgroundColor: theme.palette.primary.main + '25',
+                    backgroundColor: `${theme.palette.primary.main}25`,
                   },
                   '& .MuiListItemIcon-root': {
                     color: theme.palette.primary.main,

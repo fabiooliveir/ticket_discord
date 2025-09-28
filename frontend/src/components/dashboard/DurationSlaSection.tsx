@@ -121,7 +121,7 @@ const DurationSlaSection: React.FC<DurationSlaSectionProps> = ({ data, loading =
             title="Com Duração"
             value={durationSla.ticketsWithDuration}
             subtitle={`${durationSla.ticketsWithoutDuration} sem duração`}
-            color="info"
+            color="primary"
             icon={<Speed />}
           />
         </Grid>
@@ -151,7 +151,7 @@ const DurationSlaSection: React.FC<DurationSlaSectionProps> = ({ data, loading =
               <Paper
                 sx={{
                   p: 2,
-                  border: `2px solid ${theme.palette[getPriorityColor(priority) as keyof typeof theme.palette].main}`,
+                  border: `2px solid ${(theme.palette as any)[getPriorityColor(priority)]?.main || theme.palette.primary.main}`,
                   borderRadius: 2,
                 }}
               >
