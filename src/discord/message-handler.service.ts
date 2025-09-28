@@ -44,9 +44,9 @@ export class MessageHandlerService {
         return;
       }
 
-      // 3. Verificar se o ticket tem agente atribuído
+      // 3. Verificar se o ticket tem agente atribuído (puxado)
       if (!ticket.assignedTo) {
-        this.logger.debug(`Ticket ${ticket.id} não possui agente atribuído`);
+        this.logger.debug(`Ticket ${ticket.id} não possui agente atribuído - aguardando alguém puxar o ticket`);
         return;
       }
 
@@ -58,23 +58,44 @@ export class MessageHandlerService {
         return;
       }
 
-      // 5. Verificar se a mensagem é do agente responsável
-      if (message.author.id !== ticket.assignedTo) {
+      // 5. Verificar se a mensagem é do agente responsável ou do criador
+      this.logger.debug(
+        `🔍 Comparando IDs - Autor: ${message.author.id}, AssignedTo: ${ticket.assignedTo}, DiscordUserId: ${ticket.discordUserId}`,
+      );
+      
+      const isAssignedAgent = message.author.id === ticket.assignedTo;
+      const isCreator = message.author.id === ticket.discordUserId;
+      
+      if (!isAssignedAgent && !isCreator) {
         this.logger.debug(
-          `Mensagem não é do agente responsável (${ticket.assignedTo})`,
+          `❌ Mensagem não é do agente responsável nem do criador - Autor: ${message.author.id}, AssignedTo: ${ticket.assignedTo}, DiscordUserId: ${ticket.discordUserId}`,
         );
         return;
       }
+      
+      if (isAssignedAgent) {
+        this.logger.debug(`✅ Mensagem é do agente responsável`);
+      } else if (isCreator) {
+        this.logger.debug(`✅ Mensagem é do criador do ticket`);
+      }
 
-      // 6. Verificar se é uma mensagem válida para captura
-      if (!this.isValidResponseMessage(message)) {
-        this.logger.debug(
-          `Mensagem não é válida para captura de primeira resposta`,
-        );
+      // 6. Verificar se é uma mensagem de usuário (não botão/interação)
+      if (message.author.bot) {
+        this.logger.debug(`Mensagem de bot ignorada - não conta como primeira resposta`);
         return;
       }
 
-      // 7. Capturar primeira resposta
+      // 7. Verificar se é uma mensagem válida para captura
+      const validationResult = this.validateMessageForCapture(message);
+      if (!validationResult.isValid) {
+        this.logger.debug(
+          `❌ Mensagem rejeitada: ${validationResult.reason} - Autor: ${message.author.tag}`,
+        );
+        return;
+      }
+      this.logger.debug(`✅ Mensagem passou em todas as validações`);
+
+      // 8. Capturar primeira resposta
       await this.captureFirstResponse(ticket, message);
 
       this.logger.log(
@@ -90,33 +111,44 @@ export class MessageHandlerService {
    */
   private async findTicketByThreadId(threadId: string): Promise<Ticket | null> {
     try {
+      this.logger.debug(`🔍 Buscando ticket para threadId: ${threadId}`);
+      
       // Verificar cache primeiro
       const cachedTicket = this.getCachedTicket(threadId);
       if (cachedTicket) {
         this.logger.debug(
-          `Ticket ${cachedTicket.id} encontrado no cache para thread ${threadId}`,
+          `✅ Ticket ${cachedTicket.id} encontrado no cache para thread ${threadId}`,
         );
         return cachedTicket;
       }
 
+      this.logger.debug(`📊 Cache miss - buscando no banco de dados para threadId: ${threadId}`);
+
       // Buscar no banco de dados
       const ticket = await this.ticketRepository
         .createQueryBuilder('ticket')
-        .where("ticket.metadata->>'threadId' = :threadId", { threadId })
+        .where("JSON_EXTRACT(ticket.metadata, '$.threadId') = :threadId", { threadId })
         .getOne();
 
-      // Adicionar ao cache se encontrado
       if (ticket) {
+        this.logger.debug(
+          `✅ Ticket ${ticket.id} encontrado no banco para thread ${threadId}`,
+        );
+        // Adicionar ao cache se encontrado
         this.setCachedTicket(threadId, ticket);
         this.logger.debug(
-          `Ticket ${ticket.id} adicionado ao cache para thread ${threadId}`,
+          `💾 Ticket ${ticket.id} adicionado ao cache para thread ${threadId}`,
+        );
+      } else {
+        this.logger.debug(
+          `❌ Nenhum ticket encontrado no banco para thread ${threadId}`,
         );
       }
 
       return ticket;
     } catch (error) {
       this.logger.error(
-        `Erro ao buscar ticket pelo threadId ${threadId}:`,
+        `❌ Erro ao buscar ticket pelo threadId ${threadId}:`,
         error,
       );
       return null;
@@ -152,6 +184,20 @@ export class MessageHandlerService {
   private removeCachedTicket(threadId: string): void {
     this.activeTicketsCache.delete(threadId);
     this.cacheExpiry.delete(threadId);
+  }
+
+  /**
+   * Invalida cache de um ticket específico por ID
+   */
+  public invalidateTicketCache(ticketId: string): void {
+    // Procurar threadId correspondente ao ticketId
+    for (const [threadId, ticket] of this.activeTicketsCache) {
+      if (ticket.id === ticketId) {
+        this.logger.debug(`🗑️ Invalidando cache para ticket ${ticketId} (thread ${threadId})`);
+        this.removeCachedTicket(threadId);
+        break;
+      }
+    }
   }
 
   /**
@@ -319,9 +365,18 @@ export class MessageHandlerService {
     // Mensagens de sistema do Discord (usando valores numéricos para evitar problemas de enum)
     if (message.type === 0 || message.type === 1) {
       // DEFAULT, RECIPIENT_ADD
+      // Verificar se é uma mensagem de sistema válida (não botão/interação)
+      if (message.content && message.content.trim().length > 0) {
+        // Se tem conteúdo, pode ser uma mensagem válida do sistema
+        return {
+          isValid: true,
+          reason: 'Mensagem do sistema com conteúdo válido',
+          critical: false,
+        };
+      }
       return {
         isValid: false,
-        reason: 'Mensagem do sistema',
+        reason: 'Mensagem do sistema sem conteúdo',
         critical: true,
       };
     }
@@ -335,6 +390,18 @@ export class MessageHandlerService {
         isValid: false,
         reason: 'Mensagem de entrada/saída',
         critical: false,
+      };
+    }
+
+    // Verificar se é uma interação de botão (não conta como primeira resposta)
+    if (message.content.includes('puxou') || 
+        message.content.includes('puxar') ||
+        message.content.includes('atribuído') ||
+        message.content.includes('responsável')) {
+      return {
+        isValid: false,
+        reason: 'Interação de botão - não conta como primeira resposta',
+        critical: true,
       };
     }
 
@@ -467,7 +534,13 @@ export class MessageHandlerService {
     message: Message,
   ): Promise<void> {
     try {
-      const responseTimestamp = message.createdAt;
+      // Usar timestamp atual em vez de message.createdAt para evitar problemas de timezone
+      const responseTimestamp = new Date();
+
+      // Debug: Verificar timestamps
+      this.logger.debug(
+        `🔍 DEBUG Timestamps - Ticket criado: ${ticket.createdAt.toISOString()} (${ticket.createdAt.getTime()}) | Mensagem capturada: ${responseTimestamp.toISOString()} (${responseTimestamp.getTime()})`,
+      );
 
       // Atualizar ticket usando save para evitar problemas de tipagem
       ticket.firstResponseAt = responseTimestamp;
@@ -520,7 +593,17 @@ export class MessageHandlerService {
     firstResponseAt: Date,
   ): number {
     const diffMs = firstResponseAt.getTime() - createdAt.getTime();
-    return Math.round(diffMs / (1000 * 60)); // converter para minutos
+    const minutes = Math.round(diffMs / (1000 * 60)); // converter para minutos
+    
+    // Se o tempo for negativo, usar 0 (problema de timezone)
+    if (minutes < 0) {
+      this.logger.warn(
+        `⚠️ Tempo de resposta negativo detectado: ${minutes} min. Usando 0 min devido a problema de timezone.`,
+      );
+      return 0;
+    }
+    
+    return minutes;
   }
 
   /**

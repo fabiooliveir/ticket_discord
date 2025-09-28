@@ -24,6 +24,7 @@ import { NewTaggingService } from '../modules/tickets/categories/new-tagging/new
 import { NewTaggingForm } from '../modules/tickets/categories/new-tagging/new-tagging.form';
 import { BudgetAdjustmentService } from '../modules/tickets/categories/budget-adjustment/budget-adjustment.service';
 import { BudgetAdjustmentForm } from '../modules/tickets/categories/budget-adjustment/budget-adjustment.form';
+import { MessageHandlerService } from './message-handler.service';
 
 @Injectable()
 export class DiscordService {
@@ -43,6 +44,7 @@ export class DiscordService {
     private readonly correctionTaggingService: CorrectionTaggingService,
     private readonly newTaggingService: NewTaggingService,
     private readonly budgetAdjustmentService: BudgetAdjustmentService,
+    private readonly messageHandlerService: MessageHandlerService,
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
   ) {}
@@ -576,6 +578,9 @@ export class DiscordService {
         assignedAt: new Date().toISOString(),
       } as Record<string, any>,
     });
+
+    // Invalidar cache do ticket após atualização
+    this.messageHandlerService.invalidateTicketCache(ticketId);
   }
 
   private async notifyTeamAssignment(ticket: any, user: any): Promise<void> {

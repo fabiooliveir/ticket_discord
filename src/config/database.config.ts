@@ -14,6 +14,7 @@ export const databaseConfig = (): TypeOrmModuleOptions => ({
   autoLoadEntities: true,
   retryAttempts: 3,
   retryDelay: 3000,
+  timezone: 'Z', // UTC timezone
   extra: {
     connectionLimit: 10,
     acquireTimeout: 60000,
