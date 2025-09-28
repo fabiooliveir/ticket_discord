@@ -13,9 +13,7 @@ export class BudgetAdjustmentForm {
   static createClientSelectionEmbed(clients: LeadfyClient[]): EmbedBuilder {
     return new EmbedBuilder()
       .setTitle('💰 Seleção de Cliente - Ajuste de Verba')
-      .setDescription(
-        'Escolha o cliente para o ticket de ajuste de verba',
-      )
+      .setDescription('Escolha o cliente para o ticket de ajuste de verba')
       .setColor(0x00ff00)
       .setFooter({ text: `Total de ${clients.length} clientes encontrados` });
   }
@@ -81,21 +79,18 @@ export class BudgetAdjustmentForm {
       .setRequired(false)
       .setMaxLength(500);
 
-    const firstActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(
-      adjustmentReasonInput,
-    );
-    const secondActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(
-      requestedAmountInput,
-    );
-    const thirdActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(
-      campaignInfoInput,
-    );
+    const firstActionRow =
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        adjustmentReasonInput,
+      );
+    const secondActionRow =
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        requestedAmountInput,
+      );
+    const thirdActionRow =
+      new ActionRowBuilder<TextInputBuilder>().addComponents(campaignInfoInput);
 
-    modal.addComponents(
-      firstActionRow,
-      secondActionRow,
-      thirdActionRow,
-    );
+    modal.addComponents(firstActionRow, secondActionRow, thirdActionRow);
 
     return modal;
   }
@@ -120,8 +115,9 @@ export class BudgetAdjustmentForm {
         },
         {
           name: '📝 Motivo do Ajuste',
-          value: formData.adjustmentReason.substring(0, 200) + 
-                 (formData.adjustmentReason.length > 200 ? '...' : ''),
+          value:
+            formData.adjustmentReason.substring(0, 200) +
+            (formData.adjustmentReason.length > 200 ? '...' : ''),
           inline: false,
         },
         {
@@ -134,8 +130,9 @@ export class BudgetAdjustmentForm {
     if (formData.campaignInfo) {
       embed.addFields({
         name: '📊 Informações da Campanha',
-        value: formData.campaignInfo.substring(0, 200) + 
-               (formData.campaignInfo.length > 200 ? '...' : ''),
+        value:
+          formData.campaignInfo.substring(0, 200) +
+          (formData.campaignInfo.length > 200 ? '...' : ''),
         inline: false,
       });
     }
@@ -155,5 +152,4 @@ export class BudgetAdjustmentForm {
         .setStyle(ButtonStyle.Danger),
     );
   }
-
 }

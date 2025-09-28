@@ -11,6 +11,10 @@ import {
   Warning,
   CheckCircle,
   TrendingUp,
+  AccessTime,
+  Timer,
+  Speed,
+  Assessment,
 } from '@mui/icons-material';
 import MetricCard from '../common/MetricCard';
 import { DashboardOverview } from '../../types/dashboard';
@@ -160,6 +164,63 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({ data, loading = false }) 
           value={summary.slaBreaches}
           subtitle={summary.slaBreaches === 0 ? 'Nenhuma violação' : 'Requer atenção'}
           color={summary.slaBreaches === 0 ? 'success' : 'error'}
+          icon={<Warning />}
+        />
+      </Grid>
+
+      {/* Fase 3: Cards de SLA de Duração */}
+      
+      {/* Duração Média Total */}
+      <Grid item xs={12} sm={6} md={4}>
+        <MetricCard
+          title="Duração Média Total"
+          value={formatTime(summary.durationSla.averageDurationTime)}
+          subtitle="Criação até arquivamento"
+          color="primary"
+          icon={<AccessTime />}
+        />
+      </Grid>
+
+      {/* Compliance de Duração */}
+      <Grid item xs={12} sm={6} md={4}>
+        <MetricCard
+          title="Compliance de Duração"
+          value={`${summary.durationSla.durationComplianceRate}%`}
+          subtitle="SLA de duração em dia"
+          color={summary.durationSla.durationComplianceRate >= 90 ? 'success' : summary.durationSla.durationComplianceRate >= 70 ? 'warning' : 'error'}
+          icon={<Timer />}
+        />
+      </Grid>
+
+      {/* Tickets com Duração */}
+      <Grid item xs={12} sm={6} md={4}>
+        <MetricCard
+          title="Tickets com Duração"
+          value={summary.durationSla.ticketsWithDuration}
+          subtitle={`${summary.durationSla.ticketsWithoutDuration} sem duração`}
+          color="info"
+          icon={<Speed />}
+        />
+      </Grid>
+
+      {/* Violações de Duração */}
+      <Grid item xs={12} sm={6} md={4}>
+        <MetricCard
+          title="Violações de Duração"
+          value={summary.durationSla.slaBreaches}
+          subtitle={summary.durationSla.slaBreaches === 0 ? 'Nenhuma violação' : 'Requer atenção'}
+          color={summary.durationSla.slaBreaches === 0 ? 'success' : 'error'}
+          icon={<Assessment />}
+        />
+      </Grid>
+
+      {/* Tickets em Risco de Duração */}
+      <Grid item xs={12} sm={6} md={4}>
+        <MetricCard
+          title="Tickets em Risco"
+          value={summary.durationSla.slaAtRisk}
+          subtitle="Próximos de violar SLA"
+          color={summary.durationSla.slaAtRisk === 0 ? 'success' : 'warning'}
           icon={<Warning />}
         />
       </Grid>

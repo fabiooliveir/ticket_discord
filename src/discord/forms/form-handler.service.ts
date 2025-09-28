@@ -336,10 +336,10 @@ export class FormHandlerService {
         category === 'correction-tagging'
           ? 'Correção de Tagueamento'
           : category === 'new-tagging'
-          ? 'Novo Tagueamento'
-          : category === 'budget-adjustment'
-          ? 'Ajuste de Verba'
-          : 'Desconhecida';
+            ? 'Novo Tagueamento'
+            : category === 'budget-adjustment'
+              ? 'Ajuste de Verba'
+              : 'Desconhecida';
 
       // Criar thread do ticket
       const thread = await this.discordService['createTicketThread'](team, {
@@ -463,7 +463,7 @@ export class FormHandlerService {
       // Precisamos encontrar o clientId correto
       let clientId = null;
       let discordSession: any = null;
-      
+
       // Tentar encontrar a sessão do usuário no DiscordService
       for (const [key, session] of this.discordService['userSessions']) {
         if (key.startsWith(`${interaction.user.id}_`)) {
@@ -487,13 +487,17 @@ export class FormHandlerService {
       const priority = discordSession.priority || 'medium';
 
       const formData: BudgetAdjustmentFormData = {
-        adjustmentReason: interaction.fields.getTextInputValue('adjustmentReason'),
-        requestedAmount: interaction.fields.getTextInputValue('requestedAmount'),
-        campaignInfo: interaction.fields.getTextInputValue('campaignInfo') || undefined,
+        adjustmentReason:
+          interaction.fields.getTextInputValue('adjustmentReason'),
+        requestedAmount:
+          interaction.fields.getTextInputValue('requestedAmount'),
+        campaignInfo:
+          interaction.fields.getTextInputValue('campaignInfo') || undefined,
       };
 
       // Validar dados do formulário
-      const validation = this.budgetAdjustmentService.validateFormData(formData);
+      const validation =
+        this.budgetAdjustmentService.validateFormData(formData);
       if (!validation.isValid) {
         await interaction.reply({
           content: `❌ Erro de validação:\n${validation.errors.join('\n')}`,
@@ -540,7 +544,10 @@ export class FormHandlerService {
         ephemeral: true,
       });
     } catch (error) {
-      this.logger.error('Erro ao processar formulário de ajuste de verba:', error);
+      this.logger.error(
+        'Erro ao processar formulário de ajuste de verba:',
+        error,
+      );
       await interaction.reply({
         content: '❌ Erro ao processar formulário!',
         ephemeral: true,

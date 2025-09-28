@@ -8,6 +8,11 @@ export enum SlaTargets {
   HIGH_PRIORITY_RESOLUTION = 240, // 4 horas
   MEDIUM_PRIORITY_RESOLUTION = 1440, // 24 horas
   LOW_PRIORITY_RESOLUTION = 4320, // 72 horas
+
+  // Tempos de duração total em minutos (criação até arquivamento)
+  HIGH_PRIORITY_DURATION = 480, // 8 horas
+  MEDIUM_PRIORITY_DURATION = 1440, // 24 horas
+  LOW_PRIORITY_DURATION = 2880, // 48 horas
 }
 
 export enum SlaStatus {

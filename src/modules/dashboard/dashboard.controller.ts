@@ -531,10 +531,10 @@ export class DashboardController {
       slaAtRisk: number;
     };
     performanceByPriority: {
-      critical: { avgTime: number; complianceRate: number; total: number; };
-      high: { avgTime: number; complianceRate: number; total: number; };
-      medium: { avgTime: number; complianceRate: number; total: number; };
-      low: { avgTime: number; complianceRate: number; total: number; };
+      critical: { avgTime: number; complianceRate: number; total: number };
+      high: { avgTime: number; complianceRate: number; total: number };
+      medium: { avgTime: number; complianceRate: number; total: number };
+      low: { avgTime: number; complianceRate: number; total: number };
     };
     slaTargets: {
       critical: number;
@@ -544,22 +544,27 @@ export class DashboardController {
     };
   }> {
     const overview = await this.dashboardService.getDashboardOverview();
-    
+
     return {
       slaMetrics: {
-        averageFirstResponseTime: overview.summary.firstResponseSla.averageFirstResponseTime,
-        firstResponseComplianceRate: overview.summary.firstResponseSla.firstResponseComplianceRate,
-        ticketsWithFirstResponse: overview.summary.firstResponseSla.ticketsWithFirstResponse,
-        ticketsWithoutFirstResponse: overview.summary.firstResponseSla.ticketsWithoutFirstResponse,
+        averageFirstResponseTime:
+          overview.summary.firstResponseSla.averageFirstResponseTime,
+        firstResponseComplianceRate:
+          overview.summary.firstResponseSla.firstResponseComplianceRate,
+        ticketsWithFirstResponse:
+          overview.summary.firstResponseSla.ticketsWithFirstResponse,
+        ticketsWithoutFirstResponse:
+          overview.summary.firstResponseSla.ticketsWithoutFirstResponse,
         slaBreaches: overview.summary.firstResponseSla.slaBreaches,
         slaAtRisk: overview.summary.firstResponseSla.slaAtRisk,
       },
-      performanceByPriority: overview.summary.firstResponseSla.performanceByPriority,
+      performanceByPriority:
+        overview.summary.firstResponseSla.performanceByPriority,
       slaTargets: {
         critical: 15, // 15 minutos para crítico
-        high: 60,     // 1 hora para alta
-        medium: 240,  // 4 horas para média
-        low: 480,     // 8 horas para baixa
+        high: 60, // 1 hora para alta
+        medium: 240, // 4 horas para média
+        low: 480, // 8 horas para baixa
       },
     };
   }
@@ -938,9 +943,38 @@ export class DashboardController {
             </div>
         </div>
         
-        <!-- Performance por Prioridade -->
+        <!-- Fase 3: Métricas de SLA de Duração Total -->
         <div class="welcome">
-            <h3>📊 Performance por Prioridade</h3>
+            <h2>⏰ SLA de Duração Total</h2>
+            <p>Métricas de duração do atendimento desde a criação até o arquivamento</p>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>⏰ Duração Média Total</h3>
+                <div class="stat-value">${dashboardData.summary.durationSla.averageDurationTime} min</div>
+                <p>Tempo médio de criação até arquivamento</p>
+            </div>
+            <div class="stat-card">
+                <h3>✅ Compliance de Duração</h3>
+                <div class="stat-value">${dashboardData.summary.durationSla.durationComplianceRate}%</div>
+                <p>% de tickets dentro do SLA de duração</p>
+            </div>
+            <div class="stat-card">
+                <h3>📊 Tickets com Duração</h3>
+                <div class="stat-value">${dashboardData.summary.durationSla.ticketsWithDuration}</div>
+                <p>${dashboardData.summary.durationSla.ticketsWithoutDuration} sem duração</p>
+            </div>
+            <div class="stat-card">
+                <h3>❌ Violações de Duração</h3>
+                <div class="stat-value">${dashboardData.summary.durationSla.slaBreaches}</div>
+                <p>${dashboardData.summary.durationSla.slaAtRisk} em risco</p>
+            </div>
+        </div>
+        
+        <!-- Performance por Prioridade - Primeira Resposta -->
+        <div class="welcome">
+            <h3>📊 Performance por Prioridade - Primeira Resposta</h3>
         </div>
         
         <div class="stats-grid">
@@ -963,6 +997,34 @@ export class DashboardController {
                 <h3>🟢 Baixa</h3>
                 <div class="stat-value">${dashboardData.summary.firstResponseSla.performanceByPriority.low.avgTime} min</div>
                 <p>Tempo médio: ${dashboardData.summary.firstResponseSla.performanceByPriority.low.avgTime}min | Compliance: ${dashboardData.summary.firstResponseSla.performanceByPriority.low.complianceRate}% | Total: ${dashboardData.summary.firstResponseSla.performanceByPriority.low.total}</p>
+            </div>
+        </div>
+        
+        <!-- Performance por Prioridade - Duração Total -->
+        <div class="welcome">
+            <h3>📊 Performance por Prioridade - Duração Total</h3>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>🚨 Crítica</h3>
+                <div class="stat-value">${dashboardData.summary.durationSla.performanceByPriority.critical.avgTime} min</div>
+                <p>Tempo médio: ${dashboardData.summary.durationSla.performanceByPriority.critical.avgTime}min | Compliance: ${dashboardData.summary.durationSla.performanceByPriority.critical.complianceRate}% | Total: ${dashboardData.summary.durationSla.performanceByPriority.critical.total}</p>
+            </div>
+            <div class="stat-card">
+                <h3>🔴 Alta</h3>
+                <div class="stat-value">${dashboardData.summary.durationSla.performanceByPriority.high.avgTime} min</div>
+                <p>Tempo médio: ${dashboardData.summary.durationSla.performanceByPriority.high.avgTime}min | Compliance: ${dashboardData.summary.durationSla.performanceByPriority.high.complianceRate}% | Total: ${dashboardData.summary.durationSla.performanceByPriority.high.total}</p>
+            </div>
+            <div class="stat-card">
+                <h3>🟡 Média</h3>
+                <div class="stat-value">${dashboardData.summary.durationSla.performanceByPriority.medium.avgTime} min</div>
+                <p>Tempo médio: ${dashboardData.summary.durationSla.performanceByPriority.medium.avgTime}min | Compliance: ${dashboardData.summary.durationSla.performanceByPriority.medium.complianceRate}% | Total: ${dashboardData.summary.durationSla.performanceByPriority.medium.total}</p>
+            </div>
+            <div class="stat-card">
+                <h3>🟢 Baixa</h3>
+                <div class="stat-value">${dashboardData.summary.durationSla.performanceByPriority.low.avgTime} min</div>
+                <p>Tempo médio: ${dashboardData.summary.durationSla.performanceByPriority.low.avgTime}min | Compliance: ${dashboardData.summary.durationSla.performanceByPriority.low.complianceRate}% | Total: ${dashboardData.summary.durationSla.performanceByPriority.low.total}</p>
             </div>
         </div>
     </div>
@@ -1005,5 +1067,66 @@ export class DashboardController {
 </body>
 </html>
     `;
+  }
+
+  /**
+   * Obtém métricas de SLA de duração total (Fase 3)
+   */
+  @Get('duration-sla')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  async getDurationSlaMetrics(
+    @Query(
+      'period',
+      new DefaultValuePipe('month'),
+      new ParseEnumPipe(['today', 'week', 'month', 'quarter', 'year']),
+    )
+    period: PeriodType,
+  ) {
+    return await this.dashboardService.getDurationSlaMetrics(period);
+  }
+
+  /**
+   * Obtém métricas de duração por prioridade (Fase 3)
+   */
+  @Get('duration-sla/priority')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  async getDurationSlaByPriority(
+    @Query(
+      'period',
+      new DefaultValuePipe('month'),
+      new ParseEnumPipe(['today', 'week', 'month', 'quarter', 'year']),
+    )
+    period: PeriodType,
+  ) {
+    return await this.dashboardService.getDurationSlaByPriority(period);
+  }
+
+  /**
+   * Obtém tendências de duração (Fase 3)
+   */
+  @Get('duration-sla/trends')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  async getDurationSlaTrends(
+    @Query(
+      'period',
+      new DefaultValuePipe('month'),
+      new ParseEnumPipe(['today', 'week', 'month', 'quarter', 'year']),
+    )
+    period: PeriodType,
+  ) {
+    return await this.dashboardService.getDurationSlaTrends(period);
+  }
+
+  /**
+   * Obtém alertas de duração (Fase 3)
+   */
+  @Get('duration-sla/alerts')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  async getDurationSlaAlerts() {
+    return await this.dashboardService.getDurationSlaAlerts();
   }
 }

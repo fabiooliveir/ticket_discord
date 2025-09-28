@@ -82,7 +82,9 @@ export class BudgetAdjustmentService {
     if (!formData.requestedAmount || formData.requestedAmount.trim() === '') {
       errors.push('Valor Solicitado é obrigatório');
     } else if (!this.isValidAmountFormat(formData.requestedAmount)) {
-      errors.push('Valor Solicitado deve estar em formato válido (ex: R$ 1.500,00, 15%, 1500 reais)');
+      errors.push(
+        'Valor Solicitado deve estar em formato válido (ex: R$ 1.500,00, 15%, 1500 reais)',
+      );
     }
 
     return {

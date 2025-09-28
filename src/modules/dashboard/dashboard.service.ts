@@ -29,10 +29,25 @@ export interface DashboardOverview {
       slaBreaches: number; // Tickets que violaram SLA de primeira resposta
       slaAtRisk: number; // Tickets próximos de violar SLA
       performanceByPriority: {
-        critical: { avgTime: number; complianceRate: number; total: number; };
-        high: { avgTime: number; complianceRate: number; total: number; };
-        medium: { avgTime: number; complianceRate: number; total: number; };
-        low: { avgTime: number; complianceRate: number; total: number; };
+        critical: { avgTime: number; complianceRate: number; total: number };
+        high: { avgTime: number; complianceRate: number; total: number };
+        medium: { avgTime: number; complianceRate: number; total: number };
+        low: { avgTime: number; complianceRate: number; total: number };
+      };
+    };
+    // Fase 3: Métricas de SLA de Duração Total
+    durationSla: {
+      averageDurationTime: number; // Tempo médio de duração total (minutos)
+      durationComplianceRate: number; // % de tickets dentro do SLA de duração
+      ticketsWithDuration: number; // Tickets com duração calculada
+      ticketsWithoutDuration: number; // Tickets sem duração (abertos)
+      slaBreaches: number; // Tickets que violaram SLA de duração
+      slaAtRisk: number; // Tickets próximos de violar SLA de duração
+      performanceByPriority: {
+        critical: { avgTime: number; complianceRate: number; total: number };
+        high: { avgTime: number; complianceRate: number; total: number };
+        medium: { avgTime: number; complianceRate: number; total: number };
+        low: { avgTime: number; complianceRate: number; total: number };
       };
     };
   };
@@ -217,7 +232,12 @@ export class DashboardService {
     const slaMetrics = await this.slaService.calculateSlaMetrics();
 
     // Fase 3: Calcular métricas de SLA de primeira resposta
-    const firstResponseSlaMetrics = await this.calculateFirstResponseSlaMetrics(allTickets);
+    const firstResponseSlaMetrics =
+      await this.calculateFirstResponseSlaMetrics(allTickets);
+
+    // Fase 3: Calcular métricas de SLA de duração total
+    const durationSlaMetrics =
+      await this.calculateDurationSlaMetrics(allTickets);
 
     // Calcular tendências
     const trends = {
@@ -254,6 +274,8 @@ export class DashboardService {
         slaBreaches: slaMetrics.breachedTickets,
         // Fase 3: Métricas de SLA de Primeira Resposta
         firstResponseSla: firstResponseSlaMetrics,
+        // Fase 3: Métricas de SLA de Duração Total
+        durationSla: durationSlaMetrics,
       },
       trends,
       performance: {
@@ -275,15 +297,19 @@ export class DashboardService {
     slaBreaches: number;
     slaAtRisk: number;
     performanceByPriority: {
-      critical: { avgTime: number; complianceRate: number; total: number; };
-      high: { avgTime: number; complianceRate: number; total: number; };
-      medium: { avgTime: number; complianceRate: number; total: number; };
-      low: { avgTime: number; complianceRate: number; total: number; };
+      critical: { avgTime: number; complianceRate: number; total: number };
+      high: { avgTime: number; complianceRate: number; total: number };
+      medium: { avgTime: number; complianceRate: number; total: number };
+      low: { avgTime: number; complianceRate: number; total: number };
     };
   }> {
-    const ticketsWithAgent = tickets.filter(t => t.assignedTo);
-    const ticketsWithFirstResponse = ticketsWithAgent.filter(t => t.firstResponseCaptured && t.firstResponseAt);
-    const ticketsWithoutFirstResponse = ticketsWithAgent.filter(t => !t.firstResponseCaptured || !t.firstResponseAt);
+    const ticketsWithAgent = tickets.filter((t) => t.assignedTo);
+    const ticketsWithFirstResponse = ticketsWithAgent.filter(
+      (t) => t.firstResponseCaptured && t.firstResponseAt,
+    );
+    const ticketsWithoutFirstResponse = ticketsWithAgent.filter(
+      (t) => !t.firstResponseCaptured || !t.firstResponseAt,
+    );
 
     // Calcular tempo médio de primeira resposta
     let totalResponseTime = 0;
@@ -298,11 +324,12 @@ export class DashboardService {
       low: { avgTime: 0, complianceRate: 0, total: 0, compliant: 0 },
     };
 
-    ticketsWithFirstResponse.forEach(ticket => {
+    ticketsWithFirstResponse.forEach((ticket) => {
       if (ticket.firstResponseAt && ticket.responseTimeMinutes !== null) {
         const responseTime = ticket.responseTimeMinutes;
-        const priority = ticket.priority?.toLowerCase() as keyof typeof performanceByPriority;
-        
+        const priority =
+          ticket.priority?.toLowerCase() as keyof typeof performanceByPriority;
+
         if (priority && performanceByPriority[priority]) {
           performanceByPriority[priority].total++;
           performanceByPriority[priority].avgTime += responseTime;
@@ -313,7 +340,7 @@ export class DashboardService {
         // Calcular status SLA baseado na prioridade
         const slaStatus = SlaCalculator.getResponseSlaStatus(
           responseTime,
-          ticket.priority as TicketPriority
+          ticket.priority as TicketPriority,
         );
 
         if (slaStatus === SlaStatus.COMPLIANT) {
@@ -330,21 +357,29 @@ export class DashboardService {
     });
 
     // Calcular médias por prioridade
-    Object.keys(performanceByPriority).forEach(priority => {
+    Object.keys(performanceByPriority).forEach((priority) => {
       const p = priority as keyof typeof performanceByPriority;
       if (performanceByPriority[p].total > 0) {
-        performanceByPriority[p].avgTime = Math.round(performanceByPriority[p].avgTime / performanceByPriority[p].total);
-        performanceByPriority[p].complianceRate = Math.round((performanceByPriority[p].compliant / performanceByPriority[p].total) * 100);
+        performanceByPriority[p].avgTime = Math.round(
+          performanceByPriority[p].avgTime / performanceByPriority[p].total,
+        );
+        performanceByPriority[p].complianceRate = Math.round(
+          (performanceByPriority[p].compliant /
+            performanceByPriority[p].total) *
+            100,
+        );
       }
     });
 
-    const averageFirstResponseTime = ticketsWithFirstResponse.length > 0 
-      ? Math.round(totalResponseTime / ticketsWithFirstResponse.length) 
-      : 0;
+    const averageFirstResponseTime =
+      ticketsWithFirstResponse.length > 0
+        ? Math.round(totalResponseTime / ticketsWithFirstResponse.length)
+        : 0;
 
-    const firstResponseComplianceRate = ticketsWithFirstResponse.length > 0 
-      ? Math.round((compliantTickets / ticketsWithFirstResponse.length) * 100) 
-      : 0;
+    const firstResponseComplianceRate =
+      ticketsWithFirstResponse.length > 0
+        ? Math.round((compliantTickets / ticketsWithFirstResponse.length) * 100)
+        : 0;
 
     return {
       averageFirstResponseTime,
@@ -1285,5 +1320,402 @@ export class DashboardService {
         complianceRate: slaMetrics.overallCompliance,
       },
     };
+  }
+
+  /**
+   * Calcula métricas de SLA de duração total (Fase 3)
+   */
+  private async calculateDurationSlaMetrics(tickets: Ticket[]): Promise<{
+    averageDurationTime: number;
+    durationComplianceRate: number;
+    ticketsWithDuration: number;
+    ticketsWithoutDuration: number;
+    slaBreaches: number;
+    slaAtRisk: number;
+    performanceByPriority: {
+      critical: { avgTime: number; complianceRate: number; total: number };
+      high: { avgTime: number; complianceRate: number; total: number };
+      medium: { avgTime: number; complianceRate: number; total: number };
+      low: { avgTime: number; complianceRate: number; total: number };
+    };
+  }> {
+    const closedTickets = tickets.filter((t) => t.status === 'closed');
+    const openTickets = tickets.filter((t) => t.status !== 'closed');
+
+    let totalDurationTime = 0;
+    let ticketsWithDuration = 0;
+    let slaBreaches = 0;
+    let slaAtRisk = 0;
+
+    const performanceByPriority = {
+      critical: { avgTime: 0, complianceRate: 0, total: 0 },
+      high: { avgTime: 0, complianceRate: 0, total: 0 },
+      medium: { avgTime: 0, complianceRate: 0, total: 0 },
+      low: { avgTime: 0, complianceRate: 0, total: 0 },
+    };
+
+    // Processar tickets fechados
+    closedTickets.forEach((ticket) => {
+      const durationTime =
+        ticket.durationTimeMinutes ||
+        SlaCalculator.calculateDurationTime(
+          ticket.createdAt,
+          ticket.closedAt,
+          ticket.slaCategory as SlaCategories,
+        );
+
+      if (durationTime > 0) {
+        totalDurationTime += durationTime;
+        ticketsWithDuration++;
+
+        const durationSlaStatus = SlaCalculator.getDurationSlaStatus(
+          durationTime,
+          ticket.priority as TicketPriority,
+        );
+
+        if (durationSlaStatus === SlaStatus.BREACHED) {
+          slaBreaches++;
+        } else if (durationSlaStatus === SlaStatus.AT_RISK) {
+          slaAtRisk++;
+        }
+
+        // Agrupar por prioridade
+        const priority = ticket.priority?.toLowerCase() || 'medium';
+        if (performanceByPriority[priority]) {
+          performanceByPriority[priority].total++;
+          performanceByPriority[priority].avgTime += durationTime;
+        }
+      }
+    });
+
+    // Calcular médias por prioridade
+    Object.keys(performanceByPriority).forEach((priority) => {
+      const metrics = performanceByPriority[priority];
+      if (metrics.total > 0) {
+        metrics.avgTime = Math.round(metrics.avgTime / metrics.total);
+
+        // Calcular compliance rate por prioridade
+        const priorityTickets = closedTickets.filter(
+          (t) => t.priority?.toLowerCase() === priority,
+        );
+
+        let compliantCount = 0;
+        priorityTickets.forEach((ticket) => {
+          const durationTime =
+            ticket.durationTimeMinutes ||
+            SlaCalculator.calculateDurationTime(
+              ticket.createdAt,
+              ticket.closedAt,
+              ticket.slaCategory as SlaCategories,
+            );
+
+          if (durationTime > 0) {
+            const durationSlaStatus = SlaCalculator.getDurationSlaStatus(
+              durationTime,
+              ticket.priority as TicketPriority,
+            );
+
+            if (durationSlaStatus === SlaStatus.COMPLIANT) {
+              compliantCount++;
+            }
+          }
+        });
+
+        metrics.complianceRate =
+          priorityTickets.length > 0
+            ? Math.round((compliantCount / priorityTickets.length) * 100)
+            : 0;
+      }
+    });
+
+    const averageDurationTime =
+      ticketsWithDuration > 0
+        ? Math.round(totalDurationTime / ticketsWithDuration)
+        : 0;
+
+    const durationComplianceRate =
+      closedTickets.length > 0
+        ? Math.round(
+            ((closedTickets.length - slaBreaches) / closedTickets.length) * 100,
+          )
+        : 0;
+
+    this.logger.log(
+      `📊 Duration SLA Metrics - Total: ${closedTickets.length}, Compliant: ${closedTickets.length - slaBreaches}, Compliance: ${durationComplianceRate}%`,
+    );
+
+    return {
+      averageDurationTime,
+      durationComplianceRate,
+      ticketsWithDuration,
+      ticketsWithoutDuration: openTickets.length,
+      slaBreaches,
+      slaAtRisk,
+      performanceByPriority,
+    };
+  }
+
+  /**
+   * Obtém métricas de SLA de duração por período (Fase 3)
+   */
+  async getDurationSlaMetrics(
+    period: 'today' | 'week' | 'month' | 'quarter' | 'year',
+  ) {
+    const tickets = await this.getTicketsByPeriod(period);
+    return await this.calculateDurationSlaMetrics(tickets);
+  }
+
+  /**
+   * Obtém métricas de duração por prioridade (Fase 3)
+   */
+  async getDurationSlaByPriority(
+    period: 'today' | 'week' | 'month' | 'quarter' | 'year',
+  ) {
+    const tickets = await this.getTicketsByPeriod(period);
+    const durationMetrics = await this.calculateDurationSlaMetrics(tickets);
+
+    return {
+      period,
+      totalTickets: tickets.length,
+      closedTickets: tickets.filter((t) => t.status === 'closed').length,
+      performanceByPriority: durationMetrics.performanceByPriority,
+      summary: {
+        averageDurationTime: durationMetrics.averageDurationTime,
+        durationComplianceRate: durationMetrics.durationComplianceRate,
+        slaBreaches: durationMetrics.slaBreaches,
+        slaAtRisk: durationMetrics.slaAtRisk,
+      },
+    };
+  }
+
+  /**
+   * Obtém tendências de duração (Fase 3)
+   */
+  async getDurationSlaTrends(
+    period: 'today' | 'week' | 'month' | 'quarter' | 'year',
+  ) {
+    const tickets = await this.getTicketsByPeriod(period);
+    const closedTickets = tickets.filter((t) => t.status === 'closed');
+
+    // Agrupar por data de fechamento
+    const trendsByDate = new Map<
+      string,
+      {
+        date: string;
+        totalClosed: number;
+        compliant: number;
+        atRisk: number;
+        breached: number;
+        averageDuration: number;
+      }
+    >();
+
+    closedTickets.forEach((ticket) => {
+      if (ticket.closedAt) {
+        const date = ticket.closedAt.toISOString().split('T')[0];
+
+        if (!trendsByDate.has(date)) {
+          trendsByDate.set(date, {
+            date,
+            totalClosed: 0,
+            compliant: 0,
+            atRisk: 0,
+            breached: 0,
+            averageDuration: 0,
+          });
+        }
+
+        const trend = trendsByDate.get(date)!;
+        trend.totalClosed++;
+
+        const durationTime =
+          ticket.durationTimeMinutes ||
+          SlaCalculator.calculateDurationTime(
+            ticket.createdAt,
+            ticket.closedAt,
+            ticket.slaCategory as SlaCategories,
+          );
+
+        if (durationTime > 0) {
+          trend.averageDuration += durationTime;
+
+          const durationSlaStatus = SlaCalculator.getDurationSlaStatus(
+            durationTime,
+            ticket.priority as TicketPriority,
+          );
+
+          switch (durationSlaStatus) {
+            case SlaStatus.COMPLIANT:
+              trend.compliant++;
+              break;
+            case SlaStatus.AT_RISK:
+              trend.atRisk++;
+              break;
+            case SlaStatus.BREACHED:
+              trend.breached++;
+              break;
+          }
+        }
+      }
+    });
+
+    // Calcular médias
+    trendsByDate.forEach((trend) => {
+      if (trend.totalClosed > 0) {
+        trend.averageDuration = Math.round(
+          trend.averageDuration / trend.totalClosed,
+        );
+      }
+    });
+
+    return {
+      period,
+      trends: Array.from(trendsByDate.values()).sort((a, b) =>
+        a.date.localeCompare(b.date),
+      ),
+      summary: {
+        totalDays: trendsByDate.size,
+        totalClosed: closedTickets.length,
+        averageDailyClosed:
+          closedTickets.length / Math.max(trendsByDate.size, 1),
+      },
+    };
+  }
+
+  /**
+   * Obtém alertas de duração (Fase 3)
+   */
+  async getDurationSlaAlerts() {
+    const tickets = await this.ticketRepository.find({
+      where: { status: 'closed' },
+      order: { closedAt: 'DESC' },
+    });
+
+    const alerts: Array<{
+      type: 'warning' | 'error';
+      title: string;
+      message: string;
+      count: number;
+      priority: 'high' | 'medium' | 'low';
+    }> = [];
+
+    // Alertas de tickets em risco
+    const atRiskTickets = tickets.filter((ticket) => {
+      const durationTime =
+        ticket.durationTimeMinutes ||
+        SlaCalculator.calculateDurationTime(
+          ticket.createdAt,
+          ticket.closedAt,
+          ticket.slaCategory as SlaCategories,
+        );
+
+      if (durationTime > 0) {
+        const durationSlaStatus = SlaCalculator.getDurationSlaStatus(
+          durationTime,
+          ticket.priority as TicketPriority,
+        );
+        return durationSlaStatus === SlaStatus.AT_RISK;
+      }
+      return false;
+    });
+
+    if (atRiskTickets.length > 0) {
+      alerts.push({
+        type: 'warning',
+        title: 'Tickets em Risco de SLA',
+        message: `${atRiskTickets.length} tickets estão próximos de violar o SLA de duração`,
+        count: atRiskTickets.length,
+        priority: 'medium',
+      });
+    }
+
+    // Alertas de tickets violados
+    const breachedTickets = tickets.filter((ticket) => {
+      const durationTime =
+        ticket.durationTimeMinutes ||
+        SlaCalculator.calculateDurationTime(
+          ticket.createdAt,
+          ticket.closedAt,
+          ticket.slaCategory as SlaCategories,
+        );
+
+      if (durationTime > 0) {
+        const durationSlaStatus = SlaCalculator.getDurationSlaStatus(
+          durationTime,
+          ticket.priority as TicketPriority,
+        );
+        return durationSlaStatus === SlaStatus.BREACHED;
+      }
+      return false;
+    });
+
+    if (breachedTickets.length > 0) {
+      alerts.push({
+        type: 'error',
+        title: 'SLA de Duração Violado',
+        message: `${breachedTickets.length} tickets violaram o SLA de duração`,
+        count: breachedTickets.length,
+        priority: 'high',
+      });
+    }
+
+    // Alertas de performance geral
+    const durationMetrics = await this.calculateDurationSlaMetrics(tickets);
+    if (durationMetrics.durationComplianceRate < 80) {
+      alerts.push({
+        type: 'warning',
+        title: 'Compliance de Duração Baixa',
+        message: `Taxa de compliance de duração está em ${durationMetrics.durationComplianceRate}%`,
+        count: durationMetrics.durationComplianceRate,
+        priority: 'medium',
+      });
+    }
+
+    return {
+      alerts,
+      totalAlerts: alerts.length,
+      highPriorityAlerts: alerts.filter((a) => a.priority === 'high').length,
+      mediumPriorityAlerts: alerts.filter((a) => a.priority === 'medium')
+        .length,
+    };
+  }
+
+  /**
+   * Obtém tickets por período (Fase 3)
+   */
+  private async getTicketsByPeriod(
+    period: 'today' | 'week' | 'month' | 'quarter' | 'year',
+  ): Promise<Ticket[]> {
+    const now = new Date();
+    let startDate: Date;
+    const endDate: Date = now;
+
+    switch (period) {
+      case 'today':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'quarter':
+        const quarter = Math.floor(now.getMonth() / 3);
+        startDate = new Date(now.getFullYear(), quarter * 3, 1);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 dias por padrão
+    }
+
+    return await this.ticketRepository.find({
+      where: {
+        createdAt: Between(startDate, endDate),
+      },
+      order: { createdAt: 'DESC' },
+    });
   }
 }

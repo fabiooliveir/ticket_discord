@@ -15,6 +15,7 @@ import {
 import Header from '../components/layout/Header';
 import Sidebar from '../components/layout/Sidebar';
 import OverviewCards from '../components/dashboard/OverviewCards';
+import DurationSlaSection from '../components/dashboard/DurationSlaSection';
 import AlertsPanel from '../components/dashboard/AlertsPanel';
 import ChartsSection from '../components/dashboard/ChartsSection';
 import PerformanceTable from '../components/dashboard/PerformanceTable';
@@ -81,6 +82,16 @@ const DashboardPage: React.FC = () => {
             <Grid item xs={12}>
               <ErrorBoundary>
                 <OverviewCards 
+                  data={overviewData!} 
+                  loading={overviewLoading} 
+                />
+              </ErrorBoundary>
+            </Grid>
+
+            {/* Seção de SLA de Duração */}
+            <Grid item xs={12}>
+              <ErrorBoundary>
+                <DurationSlaSection 
                   data={overviewData!} 
                   loading={overviewLoading} 
                 />

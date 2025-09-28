@@ -25,6 +25,11 @@ import { NewTaggingForm } from '../modules/tickets/categories/new-tagging/new-ta
 import { BudgetAdjustmentService } from '../modules/tickets/categories/budget-adjustment/budget-adjustment.service';
 import { BudgetAdjustmentForm } from '../modules/tickets/categories/budget-adjustment/budget-adjustment.form';
 import { MessageHandlerService } from './message-handler.service';
+import { SlaCalculator } from '../shared/utils/sla-calculator.util';
+import {
+  SlaCategories,
+  TicketPriority,
+} from '../shared/enums/sla-categories.enum';
 
 @Injectable()
 export class DiscordService {
@@ -365,16 +370,9 @@ export class DiscordService {
     } else if (customId.startsWith('pull_ticket_')) {
       const ticketId = customId.replace('pull_ticket_', '');
       await this.handlePullTicket(interaction, ticketId);
-    } else if (customId.startsWith('in_progress_')) {
-      const ticketId = customId.replace('in_progress_', '');
-      await this.handleTicketStatusChange(interaction, ticketId, 'in_progress');
     } else if (customId.startsWith('waiting_client_')) {
       const ticketId = customId.replace('waiting_client_', '');
-      await this.handleTicketStatusChange(
-        interaction,
-        ticketId,
-        'waiting_client',
-      );
+      await this.handleTicketStatusChange(interaction, ticketId);
     } else if (customId.startsWith('archive_thread_')) {
       const ticketId = customId.replace('archive_thread_', '');
       await this.handleArchiveThread(interaction, ticketId);
@@ -519,12 +517,6 @@ export class DiscordService {
       }
 
       // Botões atualizados
-      const inProgressButton = new ButtonBuilder()
-        .setCustomId(`in_progress_${ticketId}`)
-        .setLabel('Em progresso')
-        .setStyle(ButtonStyle.Success)
-        .setEmoji('⚡');
-
       const waitingClientButton = new ButtonBuilder()
         .setCustomId(`waiting_client_${ticketId}`)
         .setLabel('Aguardando cliente')
@@ -538,7 +530,6 @@ export class DiscordService {
         .setEmoji('📁');
 
       const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        inProgressButton,
         waitingClientButton,
         archiveButton,
       );
@@ -613,11 +604,7 @@ export class DiscordService {
     }
   }
 
-  private async handleTicketStatusChange(
-    interaction: any,
-    ticketId: string,
-    newStatus: string,
-  ) {
+  private async handleTicketStatusChange(interaction: any, ticketId: string) {
     try {
       const ticket = await this.ticketRepository.findOne({
         where: { id: ticketId },
@@ -642,7 +629,7 @@ export class DiscordService {
 
       // Atualizar status do ticket
       await this.ticketRepository.update(ticketId, {
-        status: newStatus,
+        status: 'waiting_client',
         metadata: {
           ...ticket.metadata,
           statusChangedAt: new Date().toISOString(),
@@ -651,11 +638,8 @@ export class DiscordService {
       });
 
       // Atualizar embed da thread
-      const statusEmoji = newStatus === 'in_progress' ? '⚡' : '⏳';
-      const statusText =
-        newStatus === 'in_progress'
-          ? '**EM PROGRESSO** - Trabalhando no ticket'
-          : '**AGUARDANDO CLIENTE** - Resposta pendente';
+      const statusEmoji = '⏳';
+      const statusText = '**AGUARDANDO CLIENTE** - Resposta pendente';
 
       const updatedEmbed = new EmbedBuilder()
         .setTitle(`🎫 Ticket #${ticket.id}`)
@@ -679,24 +663,16 @@ export class DiscordService {
             inline: true,
           },
         )
-        .setColor(newStatus === 'in_progress' ? 0x00ff00 : 0xffaa00)
+        .setColor(0xffaa00)
         .setTimestamp()
         .setFooter({ text: `Status alterado por ${interaction.user.tag}` });
 
       // Botões atualizados
-      const inProgressButton = new ButtonBuilder()
-        .setCustomId(`in_progress_${ticketId}`)
-        .setLabel('Em progresso')
-        .setStyle(ButtonStyle.Success)
-        .setEmoji('⚡')
-        .setDisabled(newStatus === 'in_progress');
-
       const waitingClientButton = new ButtonBuilder()
         .setCustomId(`waiting_client_${ticketId}`)
         .setLabel('Aguardando cliente')
         .setStyle(ButtonStyle.Secondary)
-        .setEmoji('⏳')
-        .setDisabled(newStatus === 'waiting_client');
+        .setEmoji('⏳');
 
       const archiveButton = new ButtonBuilder()
         .setCustomId(`archive_thread_${ticketId}`)
@@ -705,7 +681,6 @@ export class DiscordService {
         .setEmoji('📁');
 
       const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        inProgressButton,
         waitingClientButton,
         archiveButton,
       );
@@ -717,7 +692,7 @@ export class DiscordService {
 
       // Atualizar nome da thread baseado no status
       if (interaction.channel && interaction.channel.isThread()) {
-        const statusEmoji = newStatus === 'in_progress' ? '⚡' : '⏳';
+        const statusEmoji = '⏳';
         const newThreadName = `${statusEmoji} 🎫 ${ticket.metadata?.clientName || 'Cliente'}`;
         await interaction.channel.setName(newThreadName);
       }
@@ -768,15 +743,36 @@ export class DiscordService {
 
       // Arquivar a thread
       if (interaction.channel && interaction.channel.isThread()) {
-        // Atualizar status do ticket
+        // Calcular SLA de duração antes de arquivar
+        const closedAt = new Date();
+        const durationTimeMinutes = SlaCalculator.calculateDurationTime(
+          ticket.createdAt,
+          closedAt,
+          ticket.slaCategory as SlaCategories,
+        );
+        const durationSlaStatus = SlaCalculator.getDurationSlaStatus(
+          durationTimeMinutes,
+          ticket.priority as TicketPriority,
+        );
+
+        // Atualizar status do ticket com SLA de duração
         await this.ticketRepository.update(ticketId, {
-          status: 'archived',
+          status: 'closed', // Mudança: 'closed' em vez de 'archived'
+          closedAt: closedAt,
+          durationTimeMinutes: durationTimeMinutes,
+          durationSlaStatus: durationSlaStatus,
           metadata: {
             ...ticket.metadata,
             archivedBy: interaction.user.id,
-            archivedAt: new Date().toISOString(),
+            archivedAt: closedAt.toISOString(),
+            durationSlaCalculated: true,
+            durationSlaMethod: 'discord_archive',
           } as Record<string, any>,
         });
+
+        this.logger.log(
+          `📊 Ticket ${ticketId} arquivado - Duração: ${durationTimeMinutes}min, Status: ${durationSlaStatus}`,
+        );
 
         // Arquivar a thread por último
         await interaction.channel.setArchived(true);
@@ -969,13 +965,13 @@ export class DiscordService {
       .setPlaceholder(
         selectedCategory
           ? `Categoria: ${
-              selectedCategory === 'correction-tagging' 
-                ? 'Correção' 
-                : selectedCategory === 'new-tagging' 
-                ? 'Novo' 
-                : selectedCategory === 'budget-adjustment'
-                ? 'Ajuste de Verba'
-                : 'Desconhecida'
+              selectedCategory === 'correction-tagging'
+                ? 'Correção'
+                : selectedCategory === 'new-tagging'
+                  ? 'Novo'
+                  : selectedCategory === 'budget-adjustment'
+                    ? 'Ajuste de Verba'
+                    : 'Desconhecida'
             }`
           : 'Selecione a categoria do ticket',
       )
@@ -1016,7 +1012,9 @@ export class DiscordService {
     const select = new StringSelectMenuBuilder()
       .setCustomId(`select_team_${clientId}`)
       .setPlaceholder(
-        selectedTeam ? `Equipe: ${this.getTeamDisplayName(selectedTeam)}` : 'Selecione a equipe responsável',
+        selectedTeam
+          ? `Equipe: ${this.getTeamDisplayName(selectedTeam)}`
+          : 'Selecione a equipe responsável',
       )
       .setDisabled(false) // Sempre habilitado para permitir mudança
       .addOptions([
@@ -1208,13 +1206,13 @@ export class DiscordService {
         .setTitle('🎫 Configuração do Ticket')
         .setDescription(
           `Cliente: **${selectedClient.name}**\nCategoria: **${
-            category === 'correction-tagging' 
-              ? 'Correção de Tagueamento' 
+            category === 'correction-tagging'
+              ? 'Correção de Tagueamento'
               : category === 'new-tagging'
-              ? 'Novo Tagueamento'
-              : category === 'budget-adjustment'
-              ? 'Ajuste de Verba'
-              : 'Desconhecida'
+                ? 'Novo Tagueamento'
+                : category === 'budget-adjustment'
+                  ? 'Ajuste de Verba'
+                  : 'Desconhecida'
           }**\n\n⚠️ Categoria alterada! Selecione novamente a equipe e prioridade.`,
         )
         .setColor(0xffaa00)
@@ -1270,10 +1268,10 @@ export class DiscordService {
         session?.category === 'correction-tagging'
           ? 'Correção de Tagueamento'
           : session?.category === 'new-tagging'
-          ? 'Novo Tagueamento'
-          : session?.category === 'budget-adjustment'
-          ? 'Ajuste de Verba'
-          : 'Desconhecida';
+            ? 'Novo Tagueamento'
+            : session?.category === 'budget-adjustment'
+              ? 'Ajuste de Verba'
+              : 'Desconhecida';
 
       const embed = new EmbedBuilder()
         .setTitle('🎫 Configuração do Ticket')
@@ -1336,10 +1334,10 @@ export class DiscordService {
         session?.category === 'correction-tagging'
           ? 'Correção de Tagueamento'
           : session?.category === 'new-tagging'
-          ? 'Novo Tagueamento'
-          : session?.category === 'budget-adjustment'
-          ? 'Ajuste de Verba'
-          : 'Desconhecida';
+            ? 'Novo Tagueamento'
+            : session?.category === 'budget-adjustment'
+              ? 'Ajuste de Verba'
+              : 'Desconhecida';
       const priorityText =
         priority === 'high'
           ? 'Alta'

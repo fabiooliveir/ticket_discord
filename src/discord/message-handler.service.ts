@@ -46,7 +46,9 @@ export class MessageHandlerService {
 
       // 3. Verificar se o ticket tem agente atribuído (puxado)
       if (!ticket.assignedTo) {
-        this.logger.debug(`Ticket ${ticket.id} não possui agente atribuído - aguardando alguém puxar o ticket`);
+        this.logger.debug(
+          `Ticket ${ticket.id} não possui agente atribuído - aguardando alguém puxar o ticket`,
+        );
         return;
       }
 
@@ -62,17 +64,17 @@ export class MessageHandlerService {
       this.logger.debug(
         `🔍 Comparando IDs - Autor: ${message.author.id}, AssignedTo: ${ticket.assignedTo}, DiscordUserId: ${ticket.discordUserId}`,
       );
-      
+
       const isAssignedAgent = message.author.id === ticket.assignedTo;
       const isCreator = message.author.id === ticket.discordUserId;
-      
+
       if (!isAssignedAgent && !isCreator) {
         this.logger.debug(
           `❌ Mensagem não é do agente responsável nem do criador - Autor: ${message.author.id}, AssignedTo: ${ticket.assignedTo}, DiscordUserId: ${ticket.discordUserId}`,
         );
         return;
       }
-      
+
       if (isAssignedAgent) {
         this.logger.debug(`✅ Mensagem é do agente responsável`);
       } else if (isCreator) {
@@ -81,7 +83,9 @@ export class MessageHandlerService {
 
       // 6. Verificar se é uma mensagem de usuário (não botão/interação)
       if (message.author.bot) {
-        this.logger.debug(`Mensagem de bot ignorada - não conta como primeira resposta`);
+        this.logger.debug(
+          `Mensagem de bot ignorada - não conta como primeira resposta`,
+        );
         return;
       }
 
@@ -112,7 +116,7 @@ export class MessageHandlerService {
   private async findTicketByThreadId(threadId: string): Promise<Ticket | null> {
     try {
       this.logger.debug(`🔍 Buscando ticket para threadId: ${threadId}`);
-      
+
       // Verificar cache primeiro
       const cachedTicket = this.getCachedTicket(threadId);
       if (cachedTicket) {
@@ -122,12 +126,16 @@ export class MessageHandlerService {
         return cachedTicket;
       }
 
-      this.logger.debug(`📊 Cache miss - buscando no banco de dados para threadId: ${threadId}`);
+      this.logger.debug(
+        `📊 Cache miss - buscando no banco de dados para threadId: ${threadId}`,
+      );
 
       // Buscar no banco de dados
       const ticket = await this.ticketRepository
         .createQueryBuilder('ticket')
-        .where("JSON_EXTRACT(ticket.metadata, '$.threadId') = :threadId", { threadId })
+        .where("JSON_EXTRACT(ticket.metadata, '$.threadId') = :threadId", {
+          threadId,
+        })
         .getOne();
 
       if (ticket) {
@@ -193,7 +201,9 @@ export class MessageHandlerService {
     // Procurar threadId correspondente ao ticketId
     for (const [threadId, ticket] of this.activeTicketsCache) {
       if (ticket.id === ticketId) {
-        this.logger.debug(`🗑️ Invalidando cache para ticket ${ticketId} (thread ${threadId})`);
+        this.logger.debug(
+          `🗑️ Invalidando cache para ticket ${ticketId} (thread ${threadId})`,
+        );
         this.removeCachedTicket(threadId);
         break;
       }
@@ -394,10 +404,12 @@ export class MessageHandlerService {
     }
 
     // Verificar se é uma interação de botão (não conta como primeira resposta)
-    if (message.content.includes('puxou') || 
-        message.content.includes('puxar') ||
-        message.content.includes('atribuído') ||
-        message.content.includes('responsável')) {
+    if (
+      message.content.includes('puxou') ||
+      message.content.includes('puxar') ||
+      message.content.includes('atribuído') ||
+      message.content.includes('responsável')
+    ) {
       return {
         isValid: false,
         reason: 'Interação de botão - não conta como primeira resposta',
@@ -555,7 +567,10 @@ export class MessageHandlerService {
       await this.ticketRepository.save(ticket);
 
       // Invalidar cache após captura
-      if (ticket.metadata?.threadId && typeof ticket.metadata.threadId === 'string') {
+      if (
+        ticket.metadata?.threadId &&
+        typeof ticket.metadata.threadId === 'string'
+      ) {
         this.removeCachedTicket(ticket.metadata.threadId);
       }
 
@@ -594,7 +609,7 @@ export class MessageHandlerService {
   ): number {
     const diffMs = firstResponseAt.getTime() - createdAt.getTime();
     const minutes = Math.round(diffMs / (1000 * 60)); // converter para minutos
-    
+
     // Se o tempo for negativo, usar 0 (problema de timezone)
     if (minutes < 0) {
       this.logger.warn(
@@ -602,7 +617,7 @@ export class MessageHandlerService {
       );
       return 0;
     }
-    
+
     return minutes;
   }
 

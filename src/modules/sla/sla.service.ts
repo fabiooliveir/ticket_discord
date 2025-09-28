@@ -32,8 +32,10 @@ export class SlaService {
 
     // Fase 3: Usar dados automáticos da captura
     const metrics = await this.processSlaMetricsWithAutoCapture(tickets);
-    
-    this.logger.log(`📊 SLA Metrics calculadas para ${tickets.length} tickets usando captura automática`);
+
+    this.logger.log(
+      `📊 SLA Metrics calculadas para ${tickets.length} tickets usando captura automática`,
+    );
     return metrics;
   }
 
@@ -55,8 +57,10 @@ export class SlaService {
 
     // Fase 3: Usar dados automáticos da captura
     const metrics = await this.processSlaMetricsWithAutoCapture(tickets);
-    
-    this.logger.log(`📊 SLA Metrics calculadas para ${tickets.length} tickets no período ${startDate.toISOString()} - ${endDate.toISOString()}`);
+
+    this.logger.log(
+      `📊 SLA Metrics calculadas para ${tickets.length} tickets no período ${startDate.toISOString()} - ${endDate.toISOString()}`,
+    );
     return metrics;
   }
 
@@ -68,6 +72,8 @@ export class SlaService {
     resolutionTimeMinutes: number;
     responseSlaStatus: SlaStatus;
     resolutionSlaStatus: SlaStatus;
+    durationTimeMinutes: number;
+    durationSlaStatus: SlaStatus;
   }> {
     const ticket = await this.ticketRepository.findOne({
       where: { id: ticketId },
@@ -99,11 +105,25 @@ export class SlaService {
       ticket.priority as TicketPriority,
     );
 
+    // Calcular métricas de duração
+    const durationTimeMinutes = SlaCalculator.calculateDurationTime(
+      ticket.createdAt,
+      ticket.closedAt,
+      ticket.slaCategory as SlaCategories,
+    );
+
+    const durationSlaStatus = SlaCalculator.getDurationSlaStatus(
+      durationTimeMinutes,
+      ticket.priority as TicketPriority,
+    );
+
     return {
       responseTimeMinutes,
       resolutionTimeMinutes,
       responseSlaStatus,
       resolutionSlaStatus,
+      durationTimeMinutes,
+      durationSlaStatus,
     };
   }
 
@@ -132,9 +152,27 @@ export class SlaService {
       ticket.slaCategory as SlaCategories,
     );
 
+    // Calcular duração total (se ticket estiver fechado)
+    const durationTimeMinutes = ticket.closedAt
+      ? SlaCalculator.calculateDurationTime(
+          ticket.createdAt,
+          ticket.closedAt,
+          ticket.slaCategory as SlaCategories,
+        )
+      : 0;
+
+    const durationSlaStatus = ticket.closedAt
+      ? SlaCalculator.getDurationSlaStatus(
+          durationTimeMinutes,
+          ticket.priority as TicketPriority,
+        )
+      : SlaStatus.NOT_APPLICABLE;
+
     // Atualizar ticket com os tempos calculados
     ticket.responseTimeMinutes = responseTimeMinutes;
     ticket.resolutionTimeMinutes = resolutionTimeMinutes;
+    ticket.durationTimeMinutes = durationTimeMinutes;
+    ticket.durationSlaStatus = durationSlaStatus;
 
     return await this.ticketRepository.save(ticket);
   }
@@ -155,7 +193,9 @@ export class SlaService {
   /**
    * Processa métricas de SLA usando dados automáticos da captura (Fase 3)
    */
-  private async processSlaMetricsWithAutoCapture(tickets: Ticket[]): Promise<SlaMetricsResponseDto> {
+  private async processSlaMetricsWithAutoCapture(
+    tickets: Ticket[],
+  ): Promise<SlaMetricsResponseDto> {
     let totalTickets = 0;
     let compliantTickets = 0;
     let atRiskTickets = 0;
@@ -165,10 +205,19 @@ export class SlaService {
     let ticketsWithResponse = 0;
     let ticketsWithResolution = 0;
 
+    // Métricas de duração
+    let compliantDuration = 0;
+    let atRiskDuration = 0;
+    let breachedDuration = 0;
+    let totalDurationTime = 0;
+    let ticketsWithDuration = 0;
+
     const metricsByPriority: Record<string, any> = {};
 
     // Fase 3: Logs de captura detalhados
-    this.logger.log(`🔄 Processando ${tickets.length} tickets para métricas SLA...`);
+    this.logger.log(
+      `🔄 Processando ${tickets.length} tickets para métricas SLA...`,
+    );
 
     tickets.forEach((ticket) => {
       totalTickets++;
@@ -179,14 +228,17 @@ export class SlaService {
 
       if (ticket.firstResponseCaptured && ticket.firstResponseAt) {
         // Usar dados automáticos da captura
-        responseTimeMinutes = ticket.responseTimeMinutes || 
+        responseTimeMinutes =
+          ticket.responseTimeMinutes ||
           SlaCalculator.calculateResponseTime(
             ticket.createdAt,
             ticket.firstResponseAt,
             ticket.slaCategory as SlaCategories,
           );
-        
-        this.logger.debug(`✅ Ticket ${ticket.id}: Usando dados automáticos de captura - ${responseTimeMinutes}min`);
+
+        this.logger.debug(
+          `✅ Ticket ${ticket.id}: Usando dados automáticos de captura - ${responseTimeMinutes}min`,
+        );
       } else {
         // Fallback para tickets antigos (Fase 3)
         if (ticket.firstResponseAt) {
@@ -195,18 +247,35 @@ export class SlaService {
             ticket.firstResponseAt,
             ticket.slaCategory as SlaCategories,
           );
-          this.logger.debug(`⚠️ Ticket ${ticket.id}: Usando fallback para dados de captura - ${responseTimeMinutes}min`);
+          this.logger.debug(
+            `⚠️ Ticket ${ticket.id}: Usando fallback para dados de captura - ${responseTimeMinutes}min`,
+          );
         } else {
-          this.logger.debug(`❌ Ticket ${ticket.id}: Sem dados de primeira resposta`);
+          this.logger.debug(
+            `❌ Ticket ${ticket.id}: Sem dados de primeira resposta`,
+          );
         }
       }
 
       // Calcular tempo de resolução
       if (ticket.resolvedAt) {
-        resolutionTimeMinutes = ticket.resolutionTimeMinutes ||
+        resolutionTimeMinutes =
+          ticket.resolutionTimeMinutes ||
           SlaCalculator.calculateResolutionTime(
             ticket.createdAt,
             ticket.resolvedAt,
+            ticket.slaCategory as SlaCategories,
+          );
+      }
+
+      // Calcular tempo de duração total
+      let durationTimeMinutes = 0;
+      if (ticket.closedAt) {
+        durationTimeMinutes =
+          ticket.durationTimeMinutes ||
+          SlaCalculator.calculateDurationTime(
+            ticket.createdAt,
+            ticket.closedAt,
             ticket.slaCategory as SlaCategories,
           );
       }
@@ -222,13 +291,21 @@ export class SlaService {
         ticket.priority as TicketPriority,
       );
 
-      // Contar tickets por status
-      if (responseSlaStatus === SlaStatus.COMPLIANT) {
+      const durationSlaStatus = SlaCalculator.getDurationSlaStatus(
+        durationTimeMinutes,
+        ticket.priority as TicketPriority,
+      );
+
+      // Contar tickets por status (usando duração como métrica principal)
+      if (durationSlaStatus === SlaStatus.COMPLIANT) {
         compliantTickets++;
-      } else if (responseSlaStatus === SlaStatus.AT_RISK) {
+        compliantDuration++;
+      } else if (durationSlaStatus === SlaStatus.AT_RISK) {
         atRiskTickets++;
-      } else if (responseSlaStatus === SlaStatus.BREACHED) {
+        atRiskDuration++;
+      } else if (durationSlaStatus === SlaStatus.BREACHED) {
         breachedTickets++;
+        breachedDuration++;
       }
 
       // Acumular tempos
@@ -242,6 +319,11 @@ export class SlaService {
         ticketsWithResolution++;
       }
 
+      if (durationTimeMinutes > 0) {
+        totalDurationTime += durationTimeMinutes;
+        ticketsWithDuration++;
+      }
+
       // Métricas por prioridade
       if (!metricsByPriority[ticket.priority]) {
         metricsByPriority[ticket.priority] = {
@@ -251,20 +333,29 @@ export class SlaService {
           breached: 0,
           totalResponseTime: 0,
           totalResolutionTime: 0,
+          totalDurationTime: 0,
           ticketsWithResponse: 0,
           ticketsWithResolution: 0,
+          ticketsWithDuration: 0,
+          compliantDuration: 0,
+          atRiskDuration: 0,
+          breachedDuration: 0,
         };
       }
 
       const priorityMetrics = metricsByPriority[ticket.priority];
       priorityMetrics.total++;
-      
-      if (responseSlaStatus === SlaStatus.COMPLIANT) {
+
+      // Contar por status de duração (métrica principal)
+      if (durationSlaStatus === SlaStatus.COMPLIANT) {
         priorityMetrics.compliant++;
-      } else if (responseSlaStatus === SlaStatus.AT_RISK) {
+        priorityMetrics.compliantDuration++;
+      } else if (durationSlaStatus === SlaStatus.AT_RISK) {
         priorityMetrics.atRisk++;
-      } else if (responseSlaStatus === SlaStatus.BREACHED) {
+        priorityMetrics.atRiskDuration++;
+      } else if (durationSlaStatus === SlaStatus.BREACHED) {
         priorityMetrics.breached++;
+        priorityMetrics.breachedDuration++;
       }
 
       if (responseTimeMinutes > 0) {
@@ -276,12 +367,34 @@ export class SlaService {
         priorityMetrics.totalResolutionTime += resolutionTimeMinutes;
         priorityMetrics.ticketsWithResolution++;
       }
+
+      if (durationTimeMinutes > 0) {
+        priorityMetrics.totalDurationTime += durationTimeMinutes;
+        priorityMetrics.ticketsWithDuration++;
+      }
     });
 
     // Calcular métricas finais
-    const complianceRate = SlaCalculator.calculateComplianceRate(compliantTickets, totalTickets);
-    const averageResponseTime = ticketsWithResponse > 0 ? Math.round(totalResponseTime / ticketsWithResponse) : 0;
-    const averageResolutionTime = ticketsWithResolution > 0 ? Math.round(totalResolutionTime / ticketsWithResolution) : 0;
+    const complianceRate = SlaCalculator.calculateComplianceRate(
+      compliantTickets,
+      totalTickets,
+    );
+    const averageResponseTime =
+      ticketsWithResponse > 0
+        ? Math.round(totalResponseTime / ticketsWithResponse)
+        : 0;
+    const averageResolutionTime =
+      ticketsWithResolution > 0
+        ? Math.round(totalResolutionTime / ticketsWithResolution)
+        : 0;
+    const averageDurationTime =
+      ticketsWithDuration > 0
+        ? Math.round(totalDurationTime / ticketsWithDuration)
+        : 0;
+    const durationComplianceRate = SlaCalculator.calculateComplianceRate(
+      compliantDuration,
+      totalTickets,
+    );
 
     // Calcular métricas por prioridade
     Object.keys(metricsByPriority).forEach((priority) => {
@@ -290,16 +403,38 @@ export class SlaService {
         priorityMetrics.compliant,
         priorityMetrics.total,
       );
-      priorityMetrics.avgResponseTime = priorityMetrics.ticketsWithResponse > 0 
-        ? Math.round(priorityMetrics.totalResponseTime / priorityMetrics.ticketsWithResponse) 
-        : 0;
-      priorityMetrics.avgResolutionTime = priorityMetrics.ticketsWithResolution > 0 
-        ? Math.round(priorityMetrics.totalResolutionTime / priorityMetrics.ticketsWithResolution) 
-        : 0;
+      priorityMetrics.avgResponseTime =
+        priorityMetrics.ticketsWithResponse > 0
+          ? Math.round(
+              priorityMetrics.totalResponseTime /
+                priorityMetrics.ticketsWithResponse,
+            )
+          : 0;
+      priorityMetrics.avgResolutionTime =
+        priorityMetrics.ticketsWithResolution > 0
+          ? Math.round(
+              priorityMetrics.totalResolutionTime /
+                priorityMetrics.ticketsWithResolution,
+            )
+          : 0;
+      priorityMetrics.avgDurationTime =
+        priorityMetrics.ticketsWithDuration > 0
+          ? Math.round(
+              priorityMetrics.totalDurationTime /
+                priorityMetrics.ticketsWithDuration,
+            )
+          : 0;
+      priorityMetrics.durationComplianceRate =
+        SlaCalculator.calculateComplianceRate(
+          priorityMetrics.compliantDuration,
+          priorityMetrics.total,
+        );
     });
 
     // Fase 3: Log de resumo
-    this.logger.log(`📈 SLA Metrics processadas - Total: ${totalTickets}, Compliant: ${compliantTickets}, Compliance: ${complianceRate}%`);
+    this.logger.log(
+      `📈 SLA Metrics processadas - Total: ${totalTickets}, Compliant: ${compliantTickets}, Compliance: ${complianceRate}%`,
+    );
 
     return {
       totalTickets,
@@ -309,6 +444,11 @@ export class SlaService {
       complianceRate,
       averageResponseTime,
       averageResolutionTime,
+      compliantDuration,
+      atRiskDuration,
+      breachedDuration,
+      averageDurationTime,
+      durationComplianceRate,
       metricsByPriority,
     };
   }
@@ -328,27 +468,33 @@ export class SlaService {
     let fallbackApplied = 0;
     let autoCaptured = 0;
 
-    this.logger.log(`🔄 Iniciando captura forçada para ${pendingTickets.length} tickets pendentes...`);
+    this.logger.log(
+      `🔄 Iniciando captura forçada para ${pendingTickets.length} tickets pendentes...`,
+    );
 
     for (const ticket of pendingTickets) {
       try {
         // Fase 3: Implementar fallbacks para tickets antigos
         const fallbackResult = await this.applyFallbackForOldTicket(ticket);
-        
+
         if (fallbackResult.success) {
           if (fallbackResult.method === 'auto') {
             autoCaptured++;
-            this.logger.log(`✅ Ticket ${ticket.id}: Captura automática aplicada via fallback`);
+            this.logger.log(
+              `✅ Ticket ${ticket.id}: Captura automática aplicada via fallback`,
+            );
           } else {
             fallbackApplied++;
-            this.logger.log(`⚠️ Ticket ${ticket.id}: Fallback manual aplicado - ${fallbackResult.method}`);
+            this.logger.log(
+              `⚠️ Ticket ${ticket.id}: Fallback manual aplicado - ${fallbackResult.method}`,
+            );
           }
         } else {
           this.logger.warn(
             `❌ Ticket ${ticket.id} possui primeira resposta pendente - Agente: ${ticket.assignedTo} - Thread: ${ticket.metadata?.threadId || 'N/A'}`,
           );
         }
-        
+
         processed++;
       } catch (error) {
         const errorMsg = `Erro ao processar ticket ${ticket.id}: ${error.message}`;
@@ -357,13 +503,15 @@ export class SlaService {
       }
     }
 
-    this.logger.log(`📊 Captura forçada concluída - Processados: ${processed}, Auto: ${autoCaptured}, Fallback: ${fallbackApplied}, Erros: ${errors.length}`);
+    this.logger.log(
+      `📊 Captura forçada concluída - Processados: ${processed}, Auto: ${autoCaptured}, Fallback: ${fallbackApplied}, Erros: ${errors.length}`,
+    );
 
-    return { 
-      processed, 
-      errors, 
-      fallbackApplied, 
-      autoCaptured 
+    return {
+      processed,
+      errors,
+      fallbackApplied,
+      autoCaptured,
     };
   }
 
@@ -431,11 +579,12 @@ export class SlaService {
 
       // Método 3: Estimar primeira resposta baseada em padrões históricos
       if (!ticket.firstResponseAt && !ticket.firstResponseCaptured) {
-        const estimatedResponseTime = await this.estimateResponseTimeFromPatterns(ticket);
-        
+        const estimatedResponseTime =
+          await this.estimateResponseTimeFromPatterns(ticket);
+
         if (estimatedResponseTime > 0) {
           const estimatedFirstResponse = new Date(
-            ticket.createdAt.getTime() + (estimatedResponseTime * 60 * 1000)
+            ticket.createdAt.getTime() + estimatedResponseTime * 60 * 1000,
           );
 
           ticket.firstResponseAt = estimatedFirstResponse;
@@ -462,9 +611,11 @@ export class SlaService {
         success: false,
         method: 'none',
       };
-
     } catch (error) {
-      this.logger.error(`Erro ao aplicar fallback para ticket ${ticket.id}:`, error);
+      this.logger.error(
+        `Erro ao aplicar fallback para ticket ${ticket.id}:`,
+        error,
+      );
       return {
         success: false,
         method: 'error',
@@ -475,16 +626,20 @@ export class SlaService {
   /**
    * Estima tempo de resposta baseado em padrões históricos (Fase 3)
    */
-  private async estimateResponseTimeFromPatterns(ticket: Ticket): Promise<number> {
+  private async estimateResponseTimeFromPatterns(
+    ticket: Ticket,
+  ): Promise<number> {
     try {
       // Buscar tickets similares para estimar padrão
       const similarTickets = await this.ticketRepository
         .createQueryBuilder('ticket')
         .where('ticket.priority = :priority', { priority: ticket.priority })
-        .andWhere('ticket.firstResponseCaptured = :captured', { captured: true })
+        .andWhere('ticket.firstResponseCaptured = :captured', {
+          captured: true,
+        })
         .andWhere('ticket.responseTimeMinutes IS NOT NULL')
-        .andWhere('ticket.createdAt >= :date', { 
-          date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // últimos 30 dias
+        .andWhere('ticket.createdAt >= :date', {
+          date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // últimos 30 dias
         })
         .orderBy('ticket.createdAt', 'DESC')
         .limit(10)
@@ -492,21 +647,32 @@ export class SlaService {
 
       if (similarTickets.length === 0) {
         // Usar targets padrão se não houver dados históricos
-        return SlaCalculator.getResponseTimeTarget(ticket.priority as TicketPriority);
+        return SlaCalculator.getResponseTimeTarget(
+          ticket.priority as TicketPriority,
+        );
       }
 
       // Calcular média dos tempos de resposta similares
-      const totalTime = similarTickets.reduce((sum, t) => sum + (t.responseTimeMinutes || 0), 0);
+      const totalTime = similarTickets.reduce(
+        (sum, t) => sum + (t.responseTimeMinutes || 0),
+        0,
+      );
       const averageTime = Math.round(totalTime / similarTickets.length);
 
-      this.logger.debug(`📊 Estimativa para ticket ${ticket.id}: ${averageTime}min baseado em ${similarTickets.length} tickets similares`);
+      this.logger.debug(
+        `📊 Estimativa para ticket ${ticket.id}: ${averageTime}min baseado em ${similarTickets.length} tickets similares`,
+      );
 
       return averageTime;
-
     } catch (error) {
-      this.logger.error(`Erro ao estimar tempo de resposta para ticket ${ticket.id}:`, error);
+      this.logger.error(
+        `Erro ao estimar tempo de resposta para ticket ${ticket.id}:`,
+        error,
+      );
       // Fallback para target padrão
-      return SlaCalculator.getResponseTimeTarget(ticket.priority as TicketPriority);
+      return SlaCalculator.getResponseTimeTarget(
+        ticket.priority as TicketPriority,
+      );
     }
   }
 
@@ -531,9 +697,9 @@ export class SlaService {
     captureRate: number;
     fallbackRate: number;
     dataQuality: {
-      highQuality: number;    // Dados automáticos
-      mediumQuality: number;  // Fallback aplicado
-      lowQuality: number;     // Sem dados
+      highQuality: number; // Dados automáticos
+      mediumQuality: number; // Fallback aplicado
+      lowQuality: number; // Sem dados
     };
   }> {
     try {
@@ -541,7 +707,9 @@ export class SlaService {
       const autoCaptured = await this.ticketRepository
         .createQueryBuilder('ticket')
         .where('ticket.firstResponseCaptured = :captured', { captured: true })
-        .andWhere("ticket.metadata->>'firstResponseFallback' IS NULL OR ticket.metadata->>'firstResponseFallback' != 'true'")
+        .andWhere(
+          "ticket.metadata->>'firstResponseFallback' IS NULL OR ticket.metadata->>'firstResponseFallback' != 'true'",
+        )
         .getCount();
 
       // Tickets com fallback aplicado
@@ -554,7 +722,9 @@ export class SlaService {
       const pendingCaptures = await this.ticketRepository
         .createQueryBuilder('ticket')
         .where('ticket.assignedTo IS NOT NULL')
-        .andWhere('ticket.firstResponseCaptured = :captured', { captured: false })
+        .andWhere('ticket.firstResponseCaptured = :captured', {
+          captured: false,
+        })
         .andWhere('ticket.status != :status', { status: 'closed' })
         .getCount();
 
@@ -565,15 +735,19 @@ export class SlaService {
         .getCount();
 
       // Calcular taxas
-      const captureRate = totalTickets > 0 ? (autoCaptured / totalTickets) * 100 : 0;
-      const fallbackRate = totalTickets > 0 ? (fallbackApplied / totalTickets) * 100 : 0;
+      const captureRate =
+        totalTickets > 0 ? (autoCaptured / totalTickets) * 100 : 0;
+      const fallbackRate =
+        totalTickets > 0 ? (fallbackApplied / totalTickets) * 100 : 0;
 
       // Calcular qualidade dos dados
       const highQuality = autoCaptured;
       const mediumQuality = fallbackApplied;
       const lowQuality = totalTickets - highQuality - mediumQuality;
 
-      this.logger.log(`📊 Estatísticas de captura automática - Auto: ${autoCaptured}, Fallback: ${fallbackApplied}, Pendentes: ${pendingCaptures}`);
+      this.logger.log(
+        `📊 Estatísticas de captura automática - Auto: ${autoCaptured}, Fallback: ${fallbackApplied}, Pendentes: ${pendingCaptures}`,
+      );
 
       return {
         totalTickets,
@@ -588,9 +762,11 @@ export class SlaService {
           lowQuality,
         },
       };
-
     } catch (error) {
-      this.logger.error('Erro ao obter estatísticas de captura automática:', error);
+      this.logger.error(
+        'Erro ao obter estatísticas de captura automática:',
+        error,
+      );
       return {
         totalTickets: 0,
         autoCaptured: 0,
@@ -610,15 +786,17 @@ export class SlaService {
   /**
    * Obtém logs de captura para análise (Fase 3)
    */
-  async getCaptureLogs(limit: number = 50): Promise<Array<{
-    ticketId: string;
-    captureMethod: string;
-    captureDate: Date;
-    responseTime: number;
-    fallbackApplied: boolean;
-    threadId?: string;
-    agentId?: string;
-  }>> {
+  async getCaptureLogs(limit: number = 50): Promise<
+    Array<{
+      ticketId: string;
+      captureMethod: string;
+      captureDate: Date;
+      responseTime: number;
+      fallbackApplied: boolean;
+      threadId?: string;
+      agentId?: string;
+    }>
+  > {
     try {
       const tickets = await this.ticketRepository
         .createQueryBuilder('ticket')
@@ -627,14 +805,18 @@ export class SlaService {
         .limit(limit)
         .getMany();
 
-      const logs = tickets.map(ticket => {
+      const logs = tickets.map((ticket) => {
         const metadata = ticket.metadata || {};
         const fallbackApplied = metadata.firstResponseFallback === true;
-        
+
         return {
           ticketId: ticket.id,
-          captureMethod: fallbackApplied ? metadata.fallbackMethod || 'unknown' : 'automatic',
-          captureDate: metadata.firstResponseCapturedAt ? new Date(metadata.firstResponseCapturedAt) : ticket.updatedAt,
+          captureMethod: fallbackApplied
+            ? metadata.fallbackMethod || 'unknown'
+            : 'automatic',
+          captureDate: metadata.firstResponseCapturedAt
+            ? new Date(metadata.firstResponseCapturedAt)
+            : ticket.updatedAt,
           responseTime: ticket.responseTimeMinutes || 0,
           fallbackApplied,
           threadId: metadata.threadId,
@@ -645,7 +827,6 @@ export class SlaService {
       this.logger.debug(`📋 Logs de captura obtidos: ${logs.length} registros`);
 
       return logs;
-
     } catch (error) {
       this.logger.error('Erro ao obter logs de captura:', error);
       return [];
@@ -661,7 +842,9 @@ export class SlaService {
     errors: string[];
   }> {
     try {
-      this.logger.log('🔄 Iniciando recálculo de métricas SLA para todos os tickets...');
+      this.logger.log(
+        '🔄 Iniciando recálculo de métricas SLA para todos os tickets...',
+      );
 
       const tickets = await this.ticketRepository.find({
         where: { status: 'closed' },
@@ -674,26 +857,30 @@ export class SlaService {
       for (const ticket of tickets) {
         try {
           // Recalcular usando dados automáticos
-          const responseTimeMinutes = ticket.firstResponseCaptured && ticket.firstResponseAt
-            ? (ticket.responseTimeMinutes || SlaCalculator.calculateResponseTime(
-                ticket.createdAt,
-                ticket.firstResponseAt,
-                ticket.slaCategory as SlaCategories,
-              ))
-            : 0;
+          const responseTimeMinutes =
+            ticket.firstResponseCaptured && ticket.firstResponseAt
+              ? ticket.responseTimeMinutes ||
+                SlaCalculator.calculateResponseTime(
+                  ticket.createdAt,
+                  ticket.firstResponseAt,
+                  ticket.slaCategory as SlaCategories,
+                )
+              : 0;
 
           const resolutionTimeMinutes = ticket.resolvedAt
-            ? (ticket.resolutionTimeMinutes || SlaCalculator.calculateResolutionTime(
+            ? ticket.resolutionTimeMinutes ||
+              SlaCalculator.calculateResolutionTime(
                 ticket.createdAt,
                 ticket.resolvedAt,
                 ticket.slaCategory as SlaCategories,
-              ))
+              )
             : 0;
 
           // Atualizar ticket se necessário
-          if (ticket.responseTimeMinutes !== responseTimeMinutes || 
-              ticket.resolutionTimeMinutes !== resolutionTimeMinutes) {
-            
+          if (
+            ticket.responseTimeMinutes !== responseTimeMinutes ||
+            ticket.resolutionTimeMinutes !== resolutionTimeMinutes
+          ) {
             ticket.responseTimeMinutes = responseTimeMinutes;
             ticket.resolutionTimeMinutes = resolutionTimeMinutes;
             ticket.metadata = {
@@ -702,13 +889,14 @@ export class SlaService {
               recalculationMethod: 'phase3_automatic',
             };
             await this.ticketRepository.save(ticket);
-            
+
             updated++;
-            this.logger.debug(`✅ Ticket ${ticket.id}: Métricas recalculadas - Response: ${responseTimeMinutes}min, Resolution: ${resolutionTimeMinutes}min`);
+            this.logger.debug(
+              `✅ Ticket ${ticket.id}: Métricas recalculadas - Response: ${responseTimeMinutes}min, Resolution: ${resolutionTimeMinutes}min`,
+            );
           }
 
           processed++;
-
         } catch (error) {
           const errorMsg = `Erro ao recalcular métricas do ticket ${ticket.id}: ${error.message}`;
           errors.push(errorMsg);
@@ -716,10 +904,11 @@ export class SlaService {
         }
       }
 
-      this.logger.log(`📊 Recálculo concluído - Processados: ${processed}, Atualizados: ${updated}, Erros: ${errors.length}`);
+      this.logger.log(
+        `📊 Recálculo concluído - Processados: ${processed}, Atualizados: ${updated}, Erros: ${errors.length}`,
+      );
 
       return { processed, updated, errors };
-
     } catch (error) {
       this.logger.error('Erro ao recalcular métricas SLA:', error);
       return { processed: 0, updated: 0, errors: [error.message] };
@@ -767,6 +956,13 @@ export class SlaService {
     let ticketsWithResponse = 0;
     let ticketsWithResolution = 0;
 
+    // Métricas de duração
+    let compliantDuration = 0;
+    let atRiskDuration = 0;
+    let breachedDuration = 0;
+    let totalDurationTime = 0;
+    let ticketsWithDuration = 0;
+
     const metricsByPriority: Record<string, any> = {};
 
     tickets.forEach((ticket) => {
@@ -782,21 +978,36 @@ export class SlaService {
         ticket.slaCategory as SlaCategories,
       );
 
+      // Calcular duração total
+      const durationTimeMinutes = SlaCalculator.calculateDurationTime(
+        ticket.createdAt,
+        ticket.closedAt,
+        ticket.slaCategory as SlaCategories,
+      );
+
       const resolutionSlaStatus = SlaCalculator.getResolutionSlaStatus(
         resolutionTimeMinutes,
         ticket.priority as TicketPriority,
       );
 
-      // Contar status geral (usando resolução como métrica principal)
-      switch (resolutionSlaStatus) {
+      const durationSlaStatus = SlaCalculator.getDurationSlaStatus(
+        durationTimeMinutes,
+        ticket.priority as TicketPriority,
+      );
+
+      // Contar status geral (usando duração como métrica principal)
+      switch (durationSlaStatus) {
         case SlaStatus.COMPLIANT:
           compliantTickets++;
+          compliantDuration++;
           break;
         case SlaStatus.AT_RISK:
           atRiskTickets++;
+          atRiskDuration++;
           break;
         case SlaStatus.BREACHED:
           breachedTickets++;
+          breachedDuration++;
           break;
       }
 
@@ -811,6 +1022,11 @@ export class SlaService {
         ticketsWithResolution++;
       }
 
+      if (durationTimeMinutes > 0) {
+        totalDurationTime += durationTimeMinutes;
+        ticketsWithDuration++;
+      }
+
       // Agrupar por prioridade
       const priority = ticket.priority || 'unknown';
       if (!metricsByPriority[priority]) {
@@ -821,23 +1037,32 @@ export class SlaService {
           breached: 0,
           totalResponseTime: 0,
           totalResolutionTime: 0,
+          totalDurationTime: 0,
           ticketsWithResponse: 0,
           ticketsWithResolution: 0,
+          ticketsWithDuration: 0,
+          compliantDuration: 0,
+          atRiskDuration: 0,
+          breachedDuration: 0,
         };
       }
 
       const priorityMetrics = metricsByPriority[priority];
       priorityMetrics.total++;
 
-      switch (resolutionSlaStatus) {
+      // Contar por status de duração (métrica principal)
+      switch (durationSlaStatus) {
         case SlaStatus.COMPLIANT:
           priorityMetrics.compliant++;
+          priorityMetrics.compliantDuration++;
           break;
         case SlaStatus.AT_RISK:
           priorityMetrics.atRisk++;
+          priorityMetrics.atRiskDuration++;
           break;
         case SlaStatus.BREACHED:
           priorityMetrics.breached++;
+          priorityMetrics.breachedDuration++;
           break;
       }
 
@@ -849,6 +1074,11 @@ export class SlaService {
       if (resolutionTimeMinutes > 0) {
         priorityMetrics.totalResolutionTime += resolutionTimeMinutes;
         priorityMetrics.ticketsWithResolution++;
+      }
+
+      if (durationTimeMinutes > 0) {
+        priorityMetrics.totalDurationTime += durationTimeMinutes;
+        priorityMetrics.ticketsWithDuration++;
       }
     });
 
@@ -868,6 +1098,16 @@ export class SlaService {
         ? Math.round(totalResolutionTime / ticketsWithResolution)
         : 0;
 
+    const averageDurationTime =
+      ticketsWithDuration > 0
+        ? Math.round(totalDurationTime / ticketsWithDuration)
+        : 0;
+
+    const durationComplianceRate = SlaCalculator.calculateComplianceRate(
+      compliantDuration,
+      totalTickets,
+    );
+
     // Processar métricas por prioridade
     Object.keys(metricsByPriority).forEach((priority) => {
       const metrics = metricsByPriority[priority];
@@ -885,12 +1125,22 @@ export class SlaService {
               metrics.totalResolutionTime / metrics.ticketsWithResolution,
             )
           : 0;
+      metrics.avgDurationTime =
+        metrics.ticketsWithDuration > 0
+          ? Math.round(metrics.totalDurationTime / metrics.ticketsWithDuration)
+          : 0;
+      metrics.durationComplianceRate = SlaCalculator.calculateComplianceRate(
+        metrics.compliantDuration,
+        metrics.total,
+      );
 
       // Remover campos internos
       delete metrics.totalResponseTime;
       delete metrics.totalResolutionTime;
+      delete metrics.totalDurationTime;
       delete metrics.ticketsWithResponse;
       delete metrics.ticketsWithResolution;
+      delete metrics.ticketsWithDuration;
     });
 
     return {
@@ -901,6 +1151,11 @@ export class SlaService {
       complianceRate,
       averageResponseTime,
       averageResolutionTime,
+      compliantDuration,
+      atRiskDuration,
+      breachedDuration,
+      averageDurationTime,
+      durationComplianceRate,
       metricsByPriority,
     };
   }

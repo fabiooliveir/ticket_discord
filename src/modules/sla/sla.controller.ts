@@ -327,7 +327,7 @@ export class SlaController {
   @Get('capture/auto-stats')
   async getAutoCaptureStats() {
     const stats = await this.slaService.getAutoCaptureStats();
-    
+
     return {
       success: true,
       data: stats,
@@ -341,7 +341,7 @@ export class SlaController {
   @Get('capture/logs')
   async getCaptureLogs(@Query('limit') limit?: number) {
     const logs = await this.slaService.getCaptureLogs(limit || 50);
-    
+
     return {
       success: true,
       data: {
@@ -359,7 +359,7 @@ export class SlaController {
   @Post('recalculate-all')
   async recalculateAllSlaMetrics() {
     const result = await this.slaService.recalculateAllSlaMetrics();
-    
+
     return {
       success: true,
       message: 'Recálculo de métricas SLA executado',
@@ -374,7 +374,7 @@ export class SlaController {
   @Post('fallback/apply-all')
   async applyFallbacksForOldTickets() {
     const result = await this.slaService.forceCapturePendingResponses();
-    
+
     return {
       success: true,
       message: 'Fallbacks aplicados para tickets antigos',
@@ -390,7 +390,7 @@ export class SlaController {
   async getSlaIntegrationSummary() {
     const autoStats = await this.slaService.getAutoCaptureStats();
     const captureLogs = await this.slaService.getCaptureLogs(10);
-    
+
     return {
       success: true,
       data: {

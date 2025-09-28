@@ -58,6 +58,13 @@ export class Ticket extends BaseEntity {
   @Column({ type: 'int', nullable: true })
   resolutionTimeMinutes: number;
 
+  // Campos para SLA de Duração Total (criação até arquivamento)
+  @Column({ type: 'int', nullable: true })
+  durationTimeMinutes: number;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  durationSlaStatus: string;
+
   @Column({ type: 'varchar', length: 50, default: 'business_hours' })
   slaCategory: string;
 }

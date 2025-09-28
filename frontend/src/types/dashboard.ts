@@ -9,6 +9,21 @@ export interface DashboardSummary {
   averageResponseTime: number;
   averageResolutionTime: number;
   slaBreaches: number;
+  // Fase 3: Métricas de SLA de Duração
+  durationSla: {
+    averageDurationTime: number;
+    durationComplianceRate: number;
+    ticketsWithDuration: number;
+    ticketsWithoutDuration: number;
+    slaBreaches: number;
+    slaAtRisk: number;
+    performanceByPriority: {
+      critical: { avgTime: number; complianceRate: number; total: number };
+      high: { avgTime: number; complianceRate: number; total: number };
+      medium: { avgTime: number; complianceRate: number; total: number };
+      low: { avgTime: number; complianceRate: number; total: number };
+    };
+  };
 }
 
 export interface DashboardTrends {

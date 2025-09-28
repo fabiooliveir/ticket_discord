@@ -43,6 +43,18 @@ export class SlaMetricsDto {
   @IsOptional()
   @IsEnum(TicketPriority)
   priority?: TicketPriority;
+
+  @IsOptional()
+  @IsDateString()
+  closedAt?: Date;
+
+  @IsOptional()
+  @IsNumber()
+  durationTimeMinutes?: number;
+
+  @IsOptional()
+  @IsEnum(SlaStatus)
+  durationSlaStatus?: SlaStatus;
 }
 
 export class SlaConfigDto {
@@ -77,6 +89,14 @@ export class SlaMetricsResponseDto {
   complianceRate: number;
   averageResponseTime: number;
   averageResolutionTime: number;
+
+  // Métricas de duração total
+  compliantDuration: number;
+  atRiskDuration: number;
+  breachedDuration: number;
+  averageDurationTime: number;
+  durationComplianceRate: number;
+
   metricsByPriority: Record<
     string,
     {
@@ -87,6 +107,13 @@ export class SlaMetricsResponseDto {
       complianceRate: number;
       avgResponseTime: number;
       avgResolutionTime: number;
+
+      // Métricas de duração por prioridade
+      compliantDuration: number;
+      atRiskDuration: number;
+      breachedDuration: number;
+      avgDurationTime: number;
+      durationComplianceRate: number;
     }
   >;
 }
