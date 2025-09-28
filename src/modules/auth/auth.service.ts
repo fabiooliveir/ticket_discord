@@ -16,7 +16,7 @@ export class AuthService {
 
   async validateUser(username: string, password: string): Promise<any> {
     const user = await this.usersService.findByUsername(username);
-    
+
     if (!user) {
       return null;
     }
@@ -25,8 +25,11 @@ export class AuthService {
       throw new UnauthorizedException('Usuário inativo');
     }
 
-    const isPasswordValid = await this.usersService.validatePassword(password, user.password);
-    
+    const isPasswordValid = await this.usersService.validatePassword(
+      password,
+      user.password,
+    );
+
     if (!isPasswordValid) {
       return null;
     }
@@ -40,7 +43,7 @@ export class AuthService {
 
   async login(loginDto: LoginDto): Promise<AuthResponseDto> {
     const user = await this.validateUser(loginDto.username, loginDto.password);
-    
+
     if (!user) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
@@ -80,7 +83,7 @@ export class AuthService {
       });
 
       const user = await this.usersService.findOne(payload.sub);
-      
+
       if (!user || !user.isActive) {
         throw new UnauthorizedException('Usuário inválido ou inativo');
       }
@@ -107,7 +110,7 @@ export class AuthService {
     try {
       const payload = this.jwtService.verify(token);
       const user = await this.usersService.findOne(payload.sub);
-      
+
       if (!user || !user.isActive) {
         return null;
       }

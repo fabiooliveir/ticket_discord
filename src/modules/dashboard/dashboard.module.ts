@@ -9,10 +9,7 @@ import { SlaConfig } from '../../database/entities/sla-config.entity';
 import { SlaModule } from '../sla/sla.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Ticket, SlaConfig]),
-    SlaModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Ticket, SlaConfig]), SlaModule],
   controllers: [DashboardController, DashboardRedirectController],
   providers: [DashboardService],
   exports: [DashboardService],

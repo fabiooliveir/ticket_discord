@@ -14,7 +14,7 @@ export class DashboardWebController {
   async getDashboardOverview(@Req() req: Request, @Res() res: Response) {
     // Verificar se é requisição do navegador
     const isBrowserRequest = req.headers.accept?.includes('text/html');
-    
+
     if (isBrowserRequest) {
       // Retornar página HTML do dashboard com validação via JavaScript
       const dashboardPage = await this.getDashboardPageWithValidation();
@@ -29,7 +29,7 @@ export class DashboardWebController {
 
   private async getDashboardPageWithValidation(): Promise<string> {
     const dashboardData = await this.dashboardService.getDashboardOverview();
-    
+
     return `
 <!DOCTYPE html>
 <html lang="pt-BR">

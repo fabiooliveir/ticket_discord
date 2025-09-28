@@ -1,4 +1,12 @@
-import { Controller, Post, Body, UseGuards, Get, Request, Res } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Get,
+  Request,
+  Res,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -292,7 +300,7 @@ export class AuthController {
 </body>
 </html>
     `;
-    
+
     res.setHeader('Content-Type', 'text/html');
     res.send(loginPage);
   }

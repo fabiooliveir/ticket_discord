@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -16,13 +27,16 @@ export class UsersController {
     // Verificar se já existe algum usuário
     const existingUsers = await this.usersService.findAll();
     if (existingUsers.length > 0) {
-      throw new HttpException('Sistema já foi inicializado. Use o endpoint /users com autenticação.', HttpStatus.FORBIDDEN);
+      throw new HttpException(
+        'Sistema já foi inicializado. Use o endpoint /users com autenticação.',
+        HttpStatus.FORBIDDEN,
+      );
     }
 
     // Criar usuário admin
     const adminUser = {
       ...createUserDto,
-      role: UserRole.ADMIN
+      role: UserRole.ADMIN,
     };
 
     return this.usersService.create(adminUser);

@@ -14,7 +14,7 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
 
   async validate(username: string, password: string): Promise<any> {
     const user = await this.usersService.findByUsername(username);
-    
+
     if (!user) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
@@ -23,8 +23,11 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Usuário inativo');
     }
 
-    const isPasswordValid = await this.usersService.validatePassword(password, user.password);
-    
+    const isPasswordValid = await this.usersService.validatePassword(
+      password,
+      user.password,
+    );
+
     if (!isPasswordValid) {
       throw new UnauthorizedException('Credenciais inválidas');
     }

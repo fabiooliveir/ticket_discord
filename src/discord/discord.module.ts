@@ -5,6 +5,7 @@ import { DiscordService } from './discord.service';
 import { DiscordBot } from './discord.bot';
 import { TeamsService } from './teams.service';
 import { FormHandlerService } from './forms/form-handler.service';
+import { MessageHandlerService } from './message-handler.service';
 import { discordConfig } from '../config/discord.config';
 import { teamsConfig } from '../config/teams.config';
 import { Ticket } from '../database/entities/ticket.entity';
@@ -23,6 +24,7 @@ import { TicketsModule } from '../modules/tickets/tickets.module';
     DiscordBot,
     TeamsService,
     FormHandlerService,
+    MessageHandlerService,
     {
       provide: 'DISCORD_CONFIG',
       useFactory: discordConfig,
@@ -34,6 +36,12 @@ import { TicketsModule } from '../modules/tickets/tickets.module';
       inject: [],
     },
   ],
-  exports: [DiscordService, DiscordBot, TeamsService, FormHandlerService],
+  exports: [
+    DiscordService,
+    DiscordBot,
+    TeamsService,
+    FormHandlerService,
+    MessageHandlerService,
+  ],
 })
 export class DiscordModule {}

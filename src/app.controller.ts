@@ -1,4 +1,10 @@
-import { Controller, Get, HttpException, HttpStatus, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Res,
+} from '@nestjs/common';
 import { AppService } from './app.service';
 import type { Response } from 'express';
 
@@ -27,5 +33,4 @@ export class AppController {
       );
     }
   }
-
 }

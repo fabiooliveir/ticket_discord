@@ -43,6 +43,9 @@ export class Ticket extends BaseEntity {
   @Column({ type: 'timestamp', nullable: true })
   firstResponseAt: Date;
 
+  @Column({ type: 'boolean', default: false })
+  firstResponseCaptured: boolean;
+
   @Column({ type: 'timestamp', nullable: true })
   resolvedAt: Date;
 

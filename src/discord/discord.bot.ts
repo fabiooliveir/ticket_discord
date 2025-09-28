@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Client, GatewayIntentBits, Collection, Events } from 'discord.js';
 import { DiscordService } from './discord.service';
+import { MessageHandlerService } from './message-handler.service';
 
 @Injectable()
 export class DiscordBot implements OnModuleInit, OnModuleDestroy {
@@ -22,6 +23,8 @@ export class DiscordBot implements OnModuleInit, OnModuleDestroy {
     @Inject('DISCORD_CONFIG') private readonly config: any,
     @Inject(forwardRef(() => DiscordService))
     private readonly discordService: DiscordService,
+    @Inject(forwardRef(() => MessageHandlerService))
+    private readonly messageHandlerService: MessageHandlerService,
   ) {
     this.client = new Client({
       intents: [
@@ -112,7 +115,15 @@ export class DiscordBot implements OnModuleInit, OnModuleDestroy {
       }
     });
 
-    // Evento de mensagem removido - apenas slash commands são suportados
+    // Evento de mensagem para captura de primeira resposta SLA
+    this.client.on(Events.MessageCreate, async (message) => {
+      try {
+        // Processar mensagens em threads para captura de SLA
+        await this.messageHandlerService.handleThreadMessage(message);
+      } catch (error) {
+        this.logger.error('Erro ao processar mensagem para SLA:', error);
+      }
+    });
 
     // Evento de erro
     this.client.on(Events.Error, (error) => {

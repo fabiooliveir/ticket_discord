@@ -9,7 +9,12 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import { DashboardService, DashboardOverview, DashboardMetrics, PerformanceReport } from './dashboard.service';
+import {
+  DashboardService,
+  DashboardOverview,
+  DashboardMetrics,
+  PerformanceReport,
+} from './dashboard.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -25,10 +30,13 @@ export class DashboardController {
    * Obtém visão geral do dashboard
    */
   @Get('overview')
-  async getDashboardOverview(@Req() req: any, @Res() res: any): Promise<DashboardOverview | void> {
+  async getDashboardOverview(
+    @Req() req: any,
+    @Res() res: any,
+  ): Promise<DashboardOverview | void> {
     // Verificar se é requisição do navegador
     const isBrowserRequest = req.headers.accept?.includes('text/html');
-    
+
     if (isBrowserRequest) {
       // Retornar página HTML do dashboard com validação via JavaScript
       const dashboardPage = await this.getDashboardPageWithValidation();
@@ -38,9 +46,11 @@ export class DashboardController {
       // Para API, verificar token no header
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ message: 'Unauthorized', statusCode: 401 });
+        return res
+          .status(401)
+          .json({ message: 'Unauthorized', statusCode: 401 });
       }
-      
+
       // Retornar JSON para API
       const data = await this.dashboardService.getDashboardOverview();
       res.json(data);
@@ -55,7 +65,11 @@ export class DashboardController {
   async getDashboardMetrics(
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
-    @Query('period', new DefaultValuePipe('month'), new ParseEnumPipe(['today', 'week', 'month', 'quarter', 'year'])) 
+    @Query(
+      'period',
+      new DefaultValuePipe('month'),
+      new ParseEnumPipe(['today', 'week', 'month', 'quarter', 'year']),
+    )
     period?: PeriodType,
   ): Promise<DashboardMetrics> {
     let start: Date;
@@ -75,7 +89,9 @@ export class DashboardController {
     } else {
       // Usar período padrão se não especificado
       const now = new Date();
-      const { start: defaultStart, end: defaultEnd } = this.getDefaultDateRange(period || 'month');
+      const { start: defaultStart, end: defaultEnd } = this.getDefaultDateRange(
+        period || 'month',
+      );
       start = defaultStart;
       end = defaultEnd;
     }
@@ -93,7 +109,11 @@ export class DashboardController {
     const startOfDay = new Date(today.setHours(0, 0, 0, 0));
     const endOfDay = new Date(today.setHours(23, 59, 59, 999));
 
-    return await this.dashboardService.getDashboardMetrics(startOfDay, endOfDay, 'today');
+    return await this.dashboardService.getDashboardMetrics(
+      startOfDay,
+      endOfDay,
+      'today',
+    );
   }
 
   /**
@@ -107,7 +127,11 @@ export class DashboardController {
     startOfWeek.setDate(now.getDate() - 7);
     const endOfWeek = new Date(now);
 
-    return await this.dashboardService.getDashboardMetrics(startOfWeek, endOfWeek, 'week');
+    return await this.dashboardService.getDashboardMetrics(
+      startOfWeek,
+      endOfWeek,
+      'week',
+    );
   }
 
   /**
@@ -118,9 +142,21 @@ export class DashboardController {
   async getMonthMetrics(): Promise<DashboardMetrics> {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
 
-    return await this.dashboardService.getDashboardMetrics(startOfMonth, endOfMonth, 'month');
+    return await this.dashboardService.getDashboardMetrics(
+      startOfMonth,
+      endOfMonth,
+      'month',
+    );
   }
 
   /**
@@ -132,9 +168,21 @@ export class DashboardController {
     const now = new Date();
     const quarter = Math.floor(now.getMonth() / 3);
     const startOfQuarter = new Date(now.getFullYear(), quarter * 3, 1);
-    const endOfQuarter = new Date(now.getFullYear(), (quarter + 1) * 3, 0, 23, 59, 59, 999);
+    const endOfQuarter = new Date(
+      now.getFullYear(),
+      (quarter + 1) * 3,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
 
-    return await this.dashboardService.getDashboardMetrics(startOfQuarter, endOfQuarter, 'quarter');
+    return await this.dashboardService.getDashboardMetrics(
+      startOfQuarter,
+      endOfQuarter,
+      'quarter',
+    );
   }
 
   /**
@@ -147,7 +195,11 @@ export class DashboardController {
     const startOfYear = new Date(now.getFullYear(), 0, 1);
     const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
 
-    return await this.dashboardService.getDashboardMetrics(startOfYear, endOfYear, 'year');
+    return await this.dashboardService.getDashboardMetrics(
+      startOfYear,
+      endOfYear,
+      'year',
+    );
   }
 
   /**
@@ -191,9 +243,20 @@ export class DashboardController {
   async getCurrentMonthPerformance(): Promise<PerformanceReport> {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
 
-    return await this.dashboardService.getPerformanceReport(startOfMonth, endOfMonth);
+    return await this.dashboardService.getPerformanceReport(
+      startOfMonth,
+      endOfMonth,
+    );
   }
 
   /**
@@ -205,9 +268,20 @@ export class DashboardController {
     const now = new Date();
     const quarter = Math.floor(now.getMonth() / 3);
     const startOfQuarter = new Date(now.getFullYear(), quarter * 3, 1);
-    const endOfQuarter = new Date(now.getFullYear(), (quarter + 1) * 3, 0, 23, 59, 59, 999);
+    const endOfQuarter = new Date(
+      now.getFullYear(),
+      (quarter + 1) * 3,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
 
-    return await this.dashboardService.getPerformanceReport(startOfQuarter, endOfQuarter);
+    return await this.dashboardService.getPerformanceReport(
+      startOfQuarter,
+      endOfQuarter,
+    );
   }
 
   /**
@@ -220,7 +294,10 @@ export class DashboardController {
     const startOfYear = new Date(now.getFullYear(), 0, 1);
     const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
 
-    return await this.dashboardService.getPerformanceReport(startOfYear, endOfYear);
+    return await this.dashboardService.getPerformanceReport(
+      startOfYear,
+      endOfYear,
+    );
   }
 
   /**
@@ -242,7 +319,7 @@ export class DashboardController {
     } | null;
   }> {
     const overview = await this.dashboardService.getDashboardOverview();
-    
+
     const topAgent = overview.performance.topPerformingAgents[0] || null;
 
     return {
@@ -253,10 +330,12 @@ export class DashboardController {
       ticketsToday: overview.trends.ticketsCreatedToday,
       ticketsThisWeek: overview.trends.ticketsCreatedThisWeek,
       slaBreaches: overview.summary.slaBreaches,
-      topPerformingAgent: topAgent ? {
-        agentId: topAgent.agentId,
-        complianceRate: topAgent.complianceRate,
-      } : null,
+      topPerformingAgent: topAgent
+        ? {
+            agentId: topAgent.agentId,
+            complianceRate: topAgent.complianceRate,
+          }
+        : null,
     };
   }
 
@@ -265,12 +344,14 @@ export class DashboardController {
    */
   @Get('alerts')
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER)
-  async getDashboardAlerts(): Promise<Array<{
-    type: 'breach' | 'at_risk' | 'high_volume';
-    message: string;
-    count: number;
-    priority: 'high' | 'medium' | 'low';
-  }>> {
+  async getDashboardAlerts(): Promise<
+    Array<{
+      type: 'breach' | 'at_risk' | 'high_volume';
+      message: string;
+      count: number;
+      priority: 'high' | 'medium' | 'low';
+    }>
+  > {
     const overview = await this.dashboardService.getDashboardOverview();
     return overview.alerts;
   }
@@ -298,7 +379,7 @@ export class DashboardController {
     };
   }> {
     const overview = await this.dashboardService.getDashboardOverview();
-    
+
     // Calcular mudança de compliance (simulado)
     const complianceChange = 0; // Pode ser calculado comparando com período anterior
 
@@ -336,7 +417,7 @@ export class DashboardController {
     const metrics = await this.dashboardService.getDashboardMetrics(
       new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Últimos 30 dias
       new Date(),
-      'month'
+      'month',
     );
 
     // Esta informação seria melhor calculada no service
@@ -359,11 +440,11 @@ export class DashboardController {
     const metrics = await this.dashboardService.getDashboardMetrics(
       new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Últimos 30 dias
       new Date(),
-      'month'
+      'month',
     );
 
     const distribution: Record<string, number> = {};
-    Object.keys(metrics.priorityMetrics).forEach(priority => {
+    Object.keys(metrics.priorityMetrics).forEach((priority) => {
       distribution[priority] = metrics.priorityMetrics[priority].total;
     });
 
@@ -379,11 +460,11 @@ export class DashboardController {
     const metrics = await this.dashboardService.getDashboardMetrics(
       new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Últimos 30 dias
       new Date(),
-      'month'
+      'month',
     );
 
     const distribution: Record<string, number> = {};
-    Object.keys(metrics.categoryMetrics).forEach(category => {
+    Object.keys(metrics.categoryMetrics).forEach((category) => {
       distribution[category] = metrics.categoryMetrics[category].total;
     });
 
@@ -395,18 +476,20 @@ export class DashboardController {
    */
   @Get('performance/agents')
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER)
-  async getAgentPerformance(): Promise<Array<{
-    agentId: string;
-    agentName?: string;
-    ticketsAssigned: number;
-    ticketsResolved: number;
-    averageResolutionTime: number;
-    complianceRate: number;
-  }>> {
+  async getAgentPerformance(): Promise<
+    Array<{
+      agentId: string;
+      agentName?: string;
+      ticketsAssigned: number;
+      ticketsResolved: number;
+      averageResolutionTime: number;
+      complianceRate: number;
+    }>
+  > {
     const metrics = await this.dashboardService.getDashboardMetrics(
       new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Últimos 30 dias
       new Date(),
-      'month'
+      'month',
     );
 
     return metrics.agentMetrics;
@@ -417,18 +500,68 @@ export class DashboardController {
    */
   @Get('distribution/hourly')
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER)
-  async getHourlyDistribution(): Promise<Array<{
-    hour: number;
-    ticketsCreated: number;
-    ticketsResolved: number;
-  }>> {
+  async getHourlyDistribution(): Promise<
+    Array<{
+      hour: number;
+      ticketsCreated: number;
+      ticketsResolved: number;
+    }>
+  > {
     const metrics = await this.dashboardService.getDashboardMetrics(
       new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Últimos 7 dias
       new Date(),
-      'week'
+      'week',
     );
 
     return metrics.hourlyDistribution;
+  }
+
+  /**
+   * Obtém métricas específicas de SLA de primeira resposta (Fase 3)
+   */
+  @Get('first-response')
+  @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER)
+  async getFirstResponseMetrics(): Promise<{
+    slaMetrics: {
+      averageFirstResponseTime: number;
+      firstResponseComplianceRate: number;
+      ticketsWithFirstResponse: number;
+      ticketsWithoutFirstResponse: number;
+      slaBreaches: number;
+      slaAtRisk: number;
+    };
+    performanceByPriority: {
+      critical: { avgTime: number; complianceRate: number; total: number; };
+      high: { avgTime: number; complianceRate: number; total: number; };
+      medium: { avgTime: number; complianceRate: number; total: number; };
+      low: { avgTime: number; complianceRate: number; total: number; };
+    };
+    slaTargets: {
+      critical: number;
+      high: number;
+      medium: number;
+      low: number;
+    };
+  }> {
+    const overview = await this.dashboardService.getDashboardOverview();
+    
+    return {
+      slaMetrics: {
+        averageFirstResponseTime: overview.summary.firstResponseSla.averageFirstResponseTime,
+        firstResponseComplianceRate: overview.summary.firstResponseSla.firstResponseComplianceRate,
+        ticketsWithFirstResponse: overview.summary.firstResponseSla.ticketsWithFirstResponse,
+        ticketsWithoutFirstResponse: overview.summary.firstResponseSla.ticketsWithoutFirstResponse,
+        slaBreaches: overview.summary.firstResponseSla.slaBreaches,
+        slaAtRisk: overview.summary.firstResponseSla.slaAtRisk,
+      },
+      performanceByPriority: overview.summary.firstResponseSla.performanceByPriority,
+      slaTargets: {
+        critical: 15, // 15 minutos para crítico
+        high: 60,     // 1 hora para alta
+        medium: 240,  // 4 horas para média
+        low: 480,     // 8 horas para baixa
+      },
+    };
   }
 
   /**
@@ -436,16 +569,18 @@ export class DashboardController {
    */
   @Get('trends/daily')
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER)
-  async getDailyTrends(): Promise<Array<{
-    date: string;
-    ticketsCreated: number;
-    ticketsClosed: number;
-    complianceRate: number;
-  }>> {
+  async getDailyTrends(): Promise<
+    Array<{
+      date: string;
+      ticketsCreated: number;
+      ticketsClosed: number;
+      complianceRate: number;
+    }>
+  > {
     const metrics = await this.dashboardService.getDashboardMetrics(
       new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Últimos 30 dias
       new Date(),
-      'month'
+      'month',
     );
 
     return metrics.dailyTrends;
@@ -462,20 +597,23 @@ export class DashboardController {
     averageResolutionTime: number;
     slaBreaches: number;
     slaAtRisk: number;
-    performanceByPriority: Record<string, {
-      total: number;
-      compliant: number;
-      complianceRate: number;
-    }>;
+    performanceByPriority: Record<
+      string,
+      {
+        total: number;
+        compliant: number;
+        complianceRate: number;
+      }
+    >;
   }> {
     const metrics = await this.dashboardService.getDashboardMetrics(
       new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Últimos 30 dias
       new Date(),
-      'month'
+      'month',
     );
 
     const performanceByPriority: Record<string, any> = {};
-    Object.keys(metrics.priorityMetrics).forEach(priority => {
+    Object.keys(metrics.priorityMetrics).forEach((priority) => {
       const priorityMetrics = metrics.priorityMetrics[priority];
       performanceByPriority[priority] = {
         total: priorityMetrics.total,
@@ -510,19 +648,19 @@ export class DashboardController {
     const metrics = await this.dashboardService.getDashboardMetrics(
       startDate,
       new Date(),
-      'month'
+      'month',
     );
 
     return {
-      ticketsCreated: metrics.dailyTrends.map(trend => ({
+      ticketsCreated: metrics.dailyTrends.map((trend) => ({
         date: trend.date,
         count: trend.ticketsCreated,
       })),
-      ticketsClosed: metrics.dailyTrends.map(trend => ({
+      ticketsClosed: metrics.dailyTrends.map((trend) => ({
         date: trend.date,
         count: trend.ticketsClosed,
       })),
-      complianceRate: metrics.dailyTrends.map(trend => ({
+      complianceRate: metrics.dailyTrends.map((trend) => ({
         date: trend.date,
         rate: trend.complianceRate,
       })),
@@ -543,7 +681,7 @@ export class DashboardController {
     const metrics = await this.dashboardService.getDashboardMetrics(
       new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
       new Date(),
-      'month'
+      'month',
     );
 
     return {
@@ -554,15 +692,19 @@ export class DashboardController {
         { status: 'resolved', count: 0 },
         { status: 'closed', count: 0 },
       ],
-      byPriority: Object.entries(metrics.priorityMetrics).map(([priority, data]) => ({
-        priority,
-        count: data.total,
-      })),
-      byCategory: Object.entries(metrics.categoryMetrics).map(([category, data]) => ({
-        category,
-        count: data.total,
-      })),
-      hourly: metrics.hourlyDistribution.map(hour => ({
+      byPriority: Object.entries(metrics.priorityMetrics).map(
+        ([priority, data]) => ({
+          priority,
+          count: data.total,
+        }),
+      ),
+      byCategory: Object.entries(metrics.categoryMetrics).map(
+        ([category, data]) => ({
+          category,
+          count: data.total,
+        }),
+      ),
+      hourly: metrics.hourlyDistribution.map((hour) => ({
         hour: hour.hour,
         count: hour.ticketsCreated,
       })),
@@ -574,34 +716,50 @@ export class DashboardController {
    */
   private getDefaultDateRange(period: PeriodType): { start: Date; end: Date } {
     const now = new Date();
-    
+
     switch (period) {
       case 'today':
         const startOfDay = new Date(now.setHours(0, 0, 0, 0));
         const endOfDay = new Date(now.setHours(23, 59, 59, 999));
         return { start: startOfDay, end: endOfDay };
-        
+
       case 'week':
         const startOfWeek = new Date(now);
         startOfWeek.setDate(now.getDate() - 7);
         return { start: startOfWeek, end: new Date(now) };
-        
+
       case 'month':
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const endOfMonth = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
         return { start: startOfMonth, end: endOfMonth };
-        
+
       case 'quarter':
         const quarter = Math.floor(now.getMonth() / 3);
         const startOfQuarter = new Date(now.getFullYear(), quarter * 3, 1);
-        const endOfQuarter = new Date(now.getFullYear(), (quarter + 1) * 3, 0, 23, 59, 59, 999);
+        const endOfQuarter = new Date(
+          now.getFullYear(),
+          (quarter + 1) * 3,
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
         return { start: startOfQuarter, end: endOfQuarter };
-        
+
       case 'year':
         const startOfYear = new Date(now.getFullYear(), 0, 1);
         const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
         return { start: startOfYear, end: endOfYear };
-        
+
       default:
         throw new BadRequestException('Período inválido');
     }
@@ -609,7 +767,7 @@ export class DashboardController {
 
   private async getDashboardPageWithValidation(): Promise<string> {
     const dashboardData = await this.dashboardService.getDashboardOverview();
-    
+
     return `
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -748,6 +906,63 @@ export class DashboardController {
             <div class="stat-card">
                 <h3>Tickets Hoje</h3>
                 <div class="stat-value">${dashboardData.trends.ticketsCreatedToday}</div>
+            </div>
+        </div>
+        
+        <!-- Fase 3: Métricas de SLA de Primeira Resposta -->
+        <div class="welcome">
+            <h2>⏱️ SLA de Primeira Resposta</h2>
+            <p>Métricas de tempo para primeira resposta do agente que puxou o ticket</p>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>⏱️ Tempo Médio de Primeira Resposta</h3>
+                <div class="stat-value">${dashboardData.summary.firstResponseSla.averageFirstResponseTime} min</div>
+                <p>Tempo médio entre criação do ticket e primeira mensagem do agente</p>
+            </div>
+            <div class="stat-card">
+                <h3>✅ Taxa de Compliance SLA</h3>
+                <div class="stat-value">${dashboardData.summary.firstResponseSla.firstResponseComplianceRate}%</div>
+                <p>% de tickets dentro do SLA de primeira resposta</p>
+            </div>
+            <div class="stat-card">
+                <h3>❌ Violações de SLA</h3>
+                <div class="stat-value">${dashboardData.summary.firstResponseSla.slaBreaches}</div>
+                <p>Tickets que violaram o SLA de primeira resposta</p>
+            </div>
+            <div class="stat-card">
+                <h3>⚠️ Em Risco</h3>
+                <div class="stat-value">${dashboardData.summary.firstResponseSla.slaAtRisk}</div>
+                <p>Tickets próximos de violar o SLA</p>
+            </div>
+        </div>
+        
+        <!-- Performance por Prioridade -->
+        <div class="welcome">
+            <h3>📊 Performance por Prioridade</h3>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>🚨 Crítica</h3>
+                <div class="stat-value">${dashboardData.summary.firstResponseSla.performanceByPriority.critical.avgTime} min</div>
+                <p>Tempo médio: ${dashboardData.summary.firstResponseSla.performanceByPriority.critical.avgTime}min | Compliance: ${dashboardData.summary.firstResponseSla.performanceByPriority.critical.complianceRate}% | Total: ${dashboardData.summary.firstResponseSla.performanceByPriority.critical.total}</p>
+            </div>
+            <div class="stat-card">
+                <h3>🔴 Alta</h3>
+                <div class="stat-value">${dashboardData.summary.firstResponseSla.performanceByPriority.high.avgTime} min</div>
+                <p>Tempo médio: ${dashboardData.summary.firstResponseSla.performanceByPriority.high.avgTime}min | Compliance: ${dashboardData.summary.firstResponseSla.performanceByPriority.high.complianceRate}% | Total: ${dashboardData.summary.firstResponseSla.performanceByPriority.high.total}</p>
+            </div>
+            <div class="stat-card">
+                <h3>🟡 Média</h3>
+                <div class="stat-value">${dashboardData.summary.firstResponseSla.performanceByPriority.medium.avgTime} min</div>
+                <p>Tempo médio: ${dashboardData.summary.firstResponseSla.performanceByPriority.medium.avgTime}min | Compliance: ${dashboardData.summary.firstResponseSla.performanceByPriority.medium.complianceRate}% | Total: ${dashboardData.summary.firstResponseSla.performanceByPriority.medium.total}</p>
+            </div>
+            <div class="stat-card">
+                <h3>🟢 Baixa</h3>
+                <div class="stat-value">${dashboardData.summary.firstResponseSla.performanceByPriority.low.avgTime} min</div>
+                <p>Tempo médio: ${dashboardData.summary.firstResponseSla.performanceByPriority.low.avgTime}min | Compliance: ${dashboardData.summary.firstResponseSla.performanceByPriority.low.complianceRate}% | Total: ${dashboardData.summary.firstResponseSla.performanceByPriority.low.total}</p>
             </div>
         </div>
     </div>

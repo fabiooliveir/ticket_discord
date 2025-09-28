@@ -34,8 +34,6 @@ import { appConfig } from './config/app.config';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(BrowserAuthMiddleware)
-      .forRoutes('*');
+    consumer.apply(BrowserAuthMiddleware).forRoutes('*');
   }
 }
