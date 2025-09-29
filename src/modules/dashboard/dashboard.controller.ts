@@ -22,6 +22,7 @@ import { UserRole } from '../users/entities/user.entity';
 
 type PeriodType = 'today' | 'week' | 'month' | 'quarter' | 'year';
 
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('dashboard')
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}

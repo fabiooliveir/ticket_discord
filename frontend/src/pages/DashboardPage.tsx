@@ -74,8 +74,9 @@ const DashboardPage: React.FC = () => {
   };
 
   const handleLogout = () => {
-    // Limpar dados locais e redirecionar para login
-    localStorage.clear();
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user');
     sessionStorage.clear();
     window.location.href = '/login';
   };

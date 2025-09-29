@@ -4,6 +4,8 @@ import { CssBaseline, Box } from '@mui/material';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import DashboardPage from './pages/DashboardPage';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import PrivateRoute from './components/routes/PrivateRoute';
+import LoginPage from './pages/LoginPage';
 
 // Tema customizado do Material-UI
 const theme = createTheme({
@@ -103,9 +105,10 @@ function App() {
         <Router>
           <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
             <Routes>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="*" element={<DashboardPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+              <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+              <Route path="*" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
             </Routes>
           </Box>
         </Router>

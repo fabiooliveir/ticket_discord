@@ -23,14 +23,38 @@ class ApiService {
       },
     });
 
-    // Interceptor para tratamento de erros
+    this.api.interceptors.request.use((config) => {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        config.headers = config.headers || {};
+        (config.headers as any)['Authorization'] = `Bearer ${token}`;
+      }
+      return config;
+    });
+
     this.api.interceptors.response.use(
       (response: AxiosResponse) => response,
       (error) => {
+        if (error?.response?.status === 401) {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
+        }
         console.error('API Error:', error.response?.data || error.message);
         return Promise.reject(error);
       }
     );
+  }
+
+  async login(username: string, password: string): Promise<void> {
+    const response = await this.api.post('/auth/login', { username, password });
+    const data = response.data as any;
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
   }
 
   // Dashboard Overview
