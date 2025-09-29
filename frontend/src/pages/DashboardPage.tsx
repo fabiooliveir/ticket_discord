@@ -73,6 +73,13 @@ const DashboardPage: React.FC = () => {
     console.log('Configurações clicadas');
   };
 
+  const handleLogout = () => {
+    // Limpar dados locais e redirecionar para login
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = '/login';
+  };
+
   const renderPageContent = () => {
     switch (currentPage) {
       case 'overview':
@@ -232,7 +239,7 @@ const DashboardPage: React.FC = () => {
   if (overviewError) {
     return (
       <Box>
-        <Header onRefresh={handleRefresh} />
+        <Header onRefresh={handleRefresh} onLogout={handleLogout} />
         <Container maxWidth="xl" sx={{ mt: 2 }}>
           <Paper sx={{ p: 4, textAlign: 'center' }}>
             <Typography variant="h6" color="error" gutterBottom>
@@ -253,6 +260,7 @@ const DashboardPage: React.FC = () => {
       <Header
         onRefresh={handleRefresh}
         onSettingsClick={handleSettingsClick}
+        onLogout={handleLogout}
         notificationCount={alertsData?.length || 0}
       />
 

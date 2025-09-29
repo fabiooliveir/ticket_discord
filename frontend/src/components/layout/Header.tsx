@@ -14,18 +14,21 @@ import {
   Notifications,
   Refresh,
   Settings,
+  Logout,
 } from '@mui/icons-material';
 import { useHealthCheck } from '../../hooks/useDashboard';
 
 interface HeaderProps {
   onRefresh?: () => void;
   onSettingsClick?: () => void;
+  onLogout?: () => void;
   notificationCount?: number;
 }
 
 const Header: React.FC<HeaderProps> = ({
   onRefresh,
   onSettingsClick,
+  onLogout,
   notificationCount = 0,
 }) => {
   const theme = useTheme();
@@ -133,6 +136,23 @@ const Header: React.FC<HeaderProps> = ({
               }}
             >
               <Settings />
+            </IconButton>
+          )}
+
+          {/* Logout */}
+          {onLogout && (
+            <IconButton
+              onClick={onLogout}
+              color="inherit"
+              title="Sair"
+              sx={{
+                color: theme.palette.error.main,
+                '&:hover': {
+                  backgroundColor: `${theme.palette.error.main}10`,
+                },
+              }}
+            >
+              <Logout />
             </IconButton>
           )}
         </Box>
