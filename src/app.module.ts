@@ -10,7 +10,6 @@ import { SlaModule } from './modules/sla/sla.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { BrowserAuthMiddleware } from './middleware/browser-auth.middleware';
 import { appConfig } from './config/app.config';
 
 @Module({
@@ -34,6 +33,6 @@ import { appConfig } from './config/app.config';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(BrowserAuthMiddleware).forRoutes('*');
+    // Middleware de browser removido - frontend cuida de rotas públicas/privadas
   }
 }
