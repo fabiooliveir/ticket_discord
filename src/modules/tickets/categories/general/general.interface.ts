@@ -12,3 +12,6 @@ export interface GeneralTicketData {
   title: string;
   description: string;
 }
+
+
+

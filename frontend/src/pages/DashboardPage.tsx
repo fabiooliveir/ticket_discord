@@ -18,6 +18,7 @@ import OverviewCards from '../components/dashboard/OverviewCards';
 import DurationSlaSection from '../components/dashboard/DurationSlaSection';
 import AlertsPanel from '../components/dashboard/AlertsPanel';
 import ChartsSection from '../components/dashboard/ChartsSection';
+import QuickCharts from '../components/dashboard/QuickCharts';
 import PerformanceTable from '../components/dashboard/PerformanceTable';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorBoundary from '../components/common/ErrorBoundary';
@@ -119,11 +120,13 @@ const DashboardPage: React.FC = () => {
             {/* Gráficos */}
             <Grid item xs={12} md={6}>
               <ErrorBoundary>
-                <Paper sx={{ p: 3, height: 400 }}>
+                <Paper sx={{ p: 3, height: 400, display: 'flex', flexDirection: 'column' }}>
                   <Typography variant="h6" gutterBottom>
                     Gráficos Rápidos
                   </Typography>
-                  <ChartsSection period="month" />
+                  <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+                    <QuickCharts />
+                  </Box>
                 </Paper>
               </ErrorBoundary>
             </Grid>
