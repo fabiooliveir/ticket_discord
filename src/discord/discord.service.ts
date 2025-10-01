@@ -707,14 +707,16 @@ export class DiscordService {
 
   private async handleArchiveThread(interaction: any, ticketId: string) {
     try {
+      // Defer a resposta imediatamente para evitar timeout
+      await interaction.deferReply({ ephemeral: true });
+
       const ticket = await this.ticketRepository.findOne({
         where: { id: ticketId },
       });
 
       if (!ticket) {
-        await interaction.reply({
+        await interaction.editReply({
           content: '❌ Ticket não encontrado!',
-          ephemeral: true,
         });
         return;
       }
@@ -727,19 +729,12 @@ export class DiscordService {
       // TODO: Adicionar verificação de admin
 
       if (!canArchive) {
-        await interaction.reply({
+        await interaction.editReply({
           content:
             '❌ Apenas o criador, responsável ou admin podem arquivar a thread!',
-          ephemeral: true,
         });
         return;
       }
-
-      // Responder primeiro antes de arquivar
-      await interaction.reply({
-        content: '✅ Thread arquivada com sucesso!',
-        ephemeral: true,
-      });
 
       // Arquivar a thread
       if (interaction.channel && interaction.channel.isThread()) {
@@ -774,8 +769,13 @@ export class DiscordService {
           `📊 Ticket ${ticketId} arquivado - Duração: ${durationTimeMinutes}min, Status: ${durationSlaStatus}`,
         );
 
-        // Arquivar a thread por último
+        // Arquivar a thread
         await interaction.channel.setArchived(true);
+
+        // Confirmar sucesso
+        await interaction.editReply({
+          content: '✅ Thread arquivada com sucesso!',
+        });
       } else {
         // Se não for thread, apenas responder
         await interaction.editReply({
