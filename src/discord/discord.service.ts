@@ -24,6 +24,7 @@ import { NewTaggingService } from '../modules/tickets/categories/new-tagging/new
 import { NewTaggingForm } from '../modules/tickets/categories/new-tagging/new-tagging.form';
 import { BudgetAdjustmentService } from '../modules/tickets/categories/budget-adjustment/budget-adjustment.service';
 import { BudgetAdjustmentForm } from '../modules/tickets/categories/budget-adjustment/budget-adjustment.form';
+import { GeneralForm } from '../modules/tickets/categories/general/general.form';
 import { MessageHandlerService } from './message-handler.service';
 import { SlaCalculator } from '../shared/utils/sla-calculator.util';
 import {
@@ -189,17 +190,21 @@ export class DiscordService {
       // Determinar equipe baseada no canal onde o comando foi executado
       const channelId = interaction.channelId;
       const teams = this.teamsService.getTeamsConfig();
-      const currentTeam = teams.find(team => team.channelId === channelId);
-      
+      const currentTeam = teams.find((team) => team.channelId === channelId);
+
       if (!currentTeam) {
         await interaction.editReply({
-          content: '❌ Este comando só pode ser usado nos canais das equipes (Suporte, CS ou Tráfego).',
+          content:
+            '❌ Este comando só pode ser usado nos canais das equipes (Suporte, CS ou Tráfego).',
         });
         return;
       }
 
       // Verificar se o usuário tem acesso ao canal da equipe
-      const hasAccess = await this.teamsService.hasChannelAccess(interaction.user.id, currentTeam);
+      const hasAccess = await this.teamsService.hasChannelAccess(
+        interaction.user.id,
+        currentTeam,
+      );
       if (!hasAccess) {
         await interaction.editReply({
           content: `❌ Você não tem permissão para abrir tickets no canal da equipe ${currentTeam.name}. Verifique se tem o cargo apropriado.`,
@@ -221,15 +226,23 @@ export class DiscordService {
       await this.handleClientSelected(interaction, selectedClient.id);
     } catch (error) {
       this.logger.error('Erro ao criar ticket via slash command:', error);
-      
+
       let errorMessage = '❌ Erro interno ao criar ticket. Tente novamente.';
-      
-      if (error?.message?.includes('Missing Access') || error?.message?.includes('Missing Permissions')) {
-        errorMessage = '❌ Você não tem permissão para acessar o canal da equipe.';
-      } else if (error?.message?.includes('Canal') && error?.message?.includes('não encontrado')) {
-        errorMessage = '❌ Canal da equipe não encontrado. Verifique a configuração.';
+
+      if (
+        error?.message?.includes('Missing Access') ||
+        error?.message?.includes('Missing Permissions')
+      ) {
+        errorMessage =
+          '❌ Você não tem permissão para acessar o canal da equipe.';
+      } else if (
+        error?.message?.includes('Canal') &&
+        error?.message?.includes('não encontrado')
+      ) {
+        errorMessage =
+          '❌ Canal da equipe não encontrado. Verifique a configuração.';
       }
-      
+
       await interaction.editReply({
         content: errorMessage,
       });
@@ -364,6 +377,22 @@ export class DiscordService {
             inline: false,
           },
         );
+      } else if (
+        ticketData.category === 'Geral' &&
+        ticketData.formData
+      ) {
+        embed = embed.addFields(
+          {
+            name: 'Título do Ticket',
+            value: ticketData.formData.title || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Descrição Detalhada',
+            value: ticketData.formData.description || 'N/A',
+            inline: false,
+          },
+        );
       }
 
       // Botão para puxar ticket
@@ -396,18 +425,24 @@ export class DiscordService {
       return thread;
     } catch (error) {
       this.logger.error('Erro ao criar thread do ticket:', error);
-      
+
       // Re-lançar erro com mensagem específica para ser capturada pelo handler
       if (error?.code === 50001 || error?.code === 50013) {
-        throw new Error('Missing Access: Você não tem permissão para criar threads neste canal.');
+        throw new Error(
+          'Missing Access: Você não tem permissão para criar threads neste canal.',
+        );
       } else if (error?.code === 10003) {
-        throw new Error('Canal não encontrado: O canal da equipe não existe ou foi removido.');
+        throw new Error(
+          'Canal não encontrado: O canal da equipe não existe ou foi removido.',
+        );
       } else if (error?.message?.includes('Missing Access')) {
         throw new Error('Missing Access: Acesso negado ao canal da equipe.');
       } else if (error?.message?.includes('Missing Permissions')) {
-        throw new Error('Missing Permissions: Permissões insuficientes para criar thread.');
+        throw new Error(
+          'Missing Permissions: Permissões insuficientes para criar thread.',
+        );
       }
-      
+
       throw error; // Re-lançar erro original se não for mapeado
     }
   }
@@ -430,17 +465,17 @@ export class DiscordService {
   // Método para obter chave da equipe por ID do canal
   private getTeamKeyByChannelId(channelId: string): string {
     const teams = this.teamsService.getTeamsConfig();
-    const team = teams.find(t => t.channelId === channelId);
-    
+    const team = teams.find((t) => t.channelId === channelId);
+
     if (!team) return 'suporte'; // Fallback
-    
+
     // Mapear nome da equipe para chave
     const nameToKey = {
       'Suporte Técnico': 'suporte',
       'Customer Success': 'cs',
       'Tráfego Pago': 'trafico',
     };
-    
+
     return nameToKey[team.name] || 'suporte';
   }
 
@@ -600,6 +635,22 @@ export class DiscordService {
           {
             name: 'Informações da Campanha',
             value: ticket.metadata.formData.campaignInfo || 'Nenhuma',
+            inline: false,
+          },
+        );
+      } else if (
+        ticket.metadata?.category === 'Geral' &&
+        ticket.metadata?.formData
+      ) {
+        updatedEmbed = updatedEmbed.addFields(
+          {
+            name: 'Título do Ticket',
+            value: ticket.metadata.formData.title || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Descrição Detalhada',
+            value: ticket.metadata.formData.description || 'N/A',
             inline: false,
           },
         );
@@ -1060,7 +1111,9 @@ export class DiscordService {
                   ? 'Novo'
                   : selectedCategory === 'budget-adjustment'
                     ? 'Ajuste de Verba'
-                    : 'Desconhecida'
+                    : selectedCategory === 'general'
+                      ? 'Geral'
+                      : 'Desconhecida'
             }`
           : 'Selecione a categoria do ticket',
       )
@@ -1086,6 +1139,13 @@ export class DiscordService {
           value: 'budget-adjustment',
           emoji: '💰',
           default: selectedCategory === 'budget-adjustment',
+        },
+        {
+          label: 'Geral',
+          description: 'Demandas gerais não categorizadas',
+          value: 'general',
+          emoji: '📋',
+          default: selectedCategory === 'general',
         },
       ]);
 
@@ -1301,7 +1361,9 @@ export class DiscordService {
                 ? 'Novo Tagueamento'
                 : category === 'budget-adjustment'
                   ? 'Ajuste de Verba'
-                  : 'Desconhecida'
+                  : category === 'general'
+                    ? 'Geral'
+                    : 'Desconhecida'
           }**\n\n⚠️ Categoria alterada! Selecione novamente a equipe e prioridade.`,
         )
         .setColor(0xffaa00)
@@ -1360,7 +1422,9 @@ export class DiscordService {
             ? 'Novo Tagueamento'
             : session?.category === 'budget-adjustment'
               ? 'Ajuste de Verba'
-              : 'Desconhecida';
+              : session?.category === 'general'
+                ? 'Geral'
+                : 'Desconhecida';
 
       const embed = new EmbedBuilder()
         .setTitle('🎫 Configuração do Ticket')
@@ -1426,7 +1490,9 @@ export class DiscordService {
             ? 'Novo Tagueamento'
             : session?.category === 'budget-adjustment'
               ? 'Ajuste de Verba'
-              : 'Desconhecida';
+              : session?.category === 'general'
+                ? 'Geral'
+                : 'Desconhecida';
       const priorityText =
         priority === 'high'
           ? 'Alta'
@@ -1527,6 +1593,9 @@ export class DiscordService {
       } else if (category === 'budget-adjustment') {
         const modal = BudgetAdjustmentForm.createFormModal();
         await interaction.showModal(modal);
+      } else if (category === 'general') {
+        const modal = GeneralForm.createModal(clientId);
+        await interaction.showModal(modal);
       } else {
         await interaction.reply({
           content: '❌ Categoria não reconhecida.',
@@ -1578,11 +1647,14 @@ export class DiscordService {
     if (topic === 'criar') {
       embed
         .setTitle('🎟️ Criar ticket')
-        .setDescription('Use o comando abaixo para abrir um ticket e falar com a equipe.')
+        .setDescription(
+          'Use o comando abaixo para abrir um ticket e falar com a equipe.',
+        )
         .addFields(
           {
             name: 'Sintaxe',
-            value: '`/criar-ticket cliente:<nome>`\nEscolha o cliente pelo autocomplete.',
+            value:
+              '`/criar-ticket cliente:<nome>`\nEscolha o cliente pelo autocomplete.',
           },
           {
             name: 'Exemplo',
@@ -1606,7 +1678,9 @@ export class DiscordService {
     if (topic === 'botoes') {
       embed
         .setTitle('🔘 Botões do ticket')
-        .setDescription('Gerencie seu ticket usando os botões na mensagem do ticket ou na thread.')
+        .setDescription(
+          'Gerencie seu ticket usando os botões na mensagem do ticket ou na thread.',
+        )
         .addFields(
           {
             name: 'Ações padrão',

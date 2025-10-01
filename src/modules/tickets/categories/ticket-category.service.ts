@@ -170,12 +170,41 @@ export class TicketCategoryService {
       ],
     };
 
+    // Categoria: Geral
+    const general: TicketCategory = {
+      id: 'general',
+      name: 'Geral',
+      description:
+        'Demandas gerais que não se enquadram nas categorias específicas',
+      team: 'suporte',
+      priority: 'medium',
+      requiresClient: true,
+      formFields: [
+        {
+          id: 'title',
+          label: 'Título do Ticket',
+          type: 'text',
+          required: true,
+          placeholder: 'Resumo breve da demanda...',
+        },
+        {
+          id: 'description',
+          label: 'Descrição Detalhada',
+          type: 'textarea',
+          required: true,
+          placeholder: 'Descreva detalhadamente sua demanda...',
+        },
+      ],
+    };
+
     this.categories.set('correction-tagging', correctionTagging);
     this.categories.set('new-tagging', newTagging);
     this.categories.set('budget-adjustment', budgetAdjustment);
+    this.categories.set('general', general);
     this.logger.log(`Categoria 'correction-tagging' inicializada`);
     this.logger.log(`Categoria 'new-tagging' inicializada`);
     this.logger.log(`Categoria 'budget-adjustment' inicializada`);
+    this.logger.log(`Categoria 'general' inicializada`);
   }
 
   getCategory(categoryId: string): TicketCategory | null {
@@ -240,6 +269,8 @@ export class TicketCategoryService {
         return this.buildNewTaggingDescription(data);
       case 'budget-adjustment':
         return this.buildBudgetAdjustmentDescription(data);
+      case 'general':
+        return this.buildGeneralDescription(data);
       default:
         return `Ticket da categoria ${categoryId}`;
     }
@@ -285,6 +316,16 @@ export class TicketCategoryService {
       description += `**Informações da Campanha:** ${data.campaignInfo}\n`;
     }
 
+    description += `**Time responsável:** ${data.team}\n`;
+    description += `**Prioridade:** ${data.priority}`;
+
+    return description;
+  }
+
+  private buildGeneralDescription(data: CategoryTicketData): string {
+    let description = `**Cliente:** ${data.clientName}\n`;
+    description += `**Título:** ${data.title}\n`;
+    description += `**Descrição:** ${data.description}\n`;
     description += `**Time responsável:** ${data.team}\n`;
     description += `**Prioridade:** ${data.priority}`;
 

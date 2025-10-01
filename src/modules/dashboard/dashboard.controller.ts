@@ -748,5 +748,4 @@ export class DashboardController {
         throw new BadRequestException('Período inválido');
     }
   }
-
 }

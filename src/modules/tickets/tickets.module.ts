@@ -8,6 +8,7 @@ import { TicketCategoryService } from './categories/ticket-category.service';
 import { CorrectionTaggingService } from './categories/correction-tagging/correction-tagging.service';
 import { NewTaggingService } from './categories/new-tagging/new-tagging.service';
 import { BudgetAdjustmentService } from './categories/budget-adjustment/budget-adjustment.service';
+import { GeneralService } from './categories/general/general.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Ticket]), forwardRef(() => LeadfyModule)],
@@ -17,6 +18,7 @@ import { BudgetAdjustmentService } from './categories/budget-adjustment/budget-a
     CorrectionTaggingService,
     NewTaggingService,
     BudgetAdjustmentService,
+    GeneralService,
   ],
   controllers: [TicketsController],
   exports: [
@@ -25,6 +27,7 @@ import { BudgetAdjustmentService } from './categories/budget-adjustment/budget-a
     CorrectionTaggingService,
     NewTaggingService,
     BudgetAdjustmentService,
+    GeneralService,
   ],
 })
 export class TicketsModule {}

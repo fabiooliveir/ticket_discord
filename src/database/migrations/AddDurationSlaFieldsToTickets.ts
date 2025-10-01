@@ -82,4 +82,3 @@ export class AddDurationSlaFieldsToTickets1700000000001
     }
   }
 }
-

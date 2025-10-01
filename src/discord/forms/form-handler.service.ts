@@ -3,13 +3,16 @@ import { ModalSubmitInteraction, ButtonInteraction } from 'discord.js';
 import { CorrectionTaggingService } from '../../modules/tickets/categories/correction-tagging/correction-tagging.service';
 import { NewTaggingService } from '../../modules/tickets/categories/new-tagging/new-tagging.service';
 import { BudgetAdjustmentService } from '../../modules/tickets/categories/budget-adjustment/budget-adjustment.service';
+import { GeneralService } from '../../modules/tickets/categories/general/general.service';
 import { TicketCategoryService } from '../../modules/tickets/categories/ticket-category.service';
 import { CorrectionTaggingForm } from '../../modules/tickets/categories/correction-tagging/correction-tagging.form';
 import { NewTaggingForm } from '../../modules/tickets/categories/new-tagging/new-tagging.form';
 import { BudgetAdjustmentForm } from '../../modules/tickets/categories/budget-adjustment/budget-adjustment.form';
+import { GeneralForm } from '../../modules/tickets/categories/general/general.form';
 import { CorrectionTaggingFormData } from '../../modules/tickets/categories/correction-tagging/correction-tagging.interface';
 import { NewTaggingFormData } from '../../modules/tickets/categories/new-tagging/new-tagging.interface';
 import { BudgetAdjustmentFormData } from '../../modules/tickets/categories/budget-adjustment/budget-adjustment.interface';
+import { GeneralFormData } from '../../modules/tickets/categories/general/general.interface';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Ticket } from '../../database/entities/ticket.entity';
@@ -25,6 +28,7 @@ export class FormHandlerService {
     private readonly correctionTaggingService: CorrectionTaggingService,
     private readonly newTaggingService: NewTaggingService,
     private readonly budgetAdjustmentService: BudgetAdjustmentService,
+    private readonly generalService: GeneralService,
     private readonly ticketCategoryService: TicketCategoryService,
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
@@ -42,6 +46,8 @@ export class FormHandlerService {
       await this.handleNewTaggingModal(interaction);
     } else if (customId === 'budget_adjustment_form') {
       await this.handleBudgetAdjustmentModal(interaction);
+    } else if (customId.startsWith('general_form_')) {
+      await this.handleGeneralModal(interaction);
     } else {
       this.logger.warn(`Modal não reconhecido: ${customId}`);
       await interaction.reply({
@@ -62,14 +68,16 @@ export class FormHandlerService {
       customId === 'confirm_ticket' ||
       customId.startsWith('confirm_ticket_') ||
       customId === 'confirm_new_tagging_ticket' ||
-      customId === 'confirm_budget_adjustment'
+      customId === 'confirm_budget_adjustment' ||
+      customId === 'confirm_general_ticket'
     ) {
       await this.handleTicketConfirmation(interaction);
     } else if (
       customId === 'cancel_ticket' ||
       customId.startsWith('cancel_ticket_') ||
       customId === 'cancel_new_tagging_ticket' ||
-      customId === 'cancel_budget_adjustment'
+      customId === 'cancel_budget_adjustment' ||
+      customId === 'cancel_general_ticket'
     ) {
       await this.handleTicketCancellation(interaction);
     } else {
@@ -339,7 +347,9 @@ export class FormHandlerService {
             ? 'Novo Tagueamento'
             : category === 'budget-adjustment'
               ? 'Ajuste de Verba'
-              : 'Desconhecida';
+              : category === 'general'
+                ? 'Geral'
+                : 'Desconhecida';
 
       // Criar thread do ticket
       const thread = await this.discordService['createTicketThread'](team, {
@@ -375,6 +385,8 @@ export class FormHandlerService {
         specificInfo = `\n**Meta Account ID:** ${session.formData.metaAccountId}`;
       } else if (category === 'budget-adjustment') {
         specificInfo = `\n**Valor Solicitado:** ${session.formData.requestedAmount}`;
+      } else if (category === 'general') {
+        specificInfo = `\n**Título:** ${session.ticketData.title}`;
       }
 
       await interaction.reply({
@@ -386,19 +398,30 @@ export class FormHandlerService {
       this.userSessions.delete(interaction.user.id);
     } catch (error) {
       this.logger.error('Erro ao confirmar ticket:', error);
-      
+
       let errorMessage = '❌ Erro ao confirmar ticket!';
-      
-      if (error?.message?.includes('Missing Access') || error?.message?.includes('Missing Permissions')) {
-        errorMessage = '❌ Você não tem permissão para criar tickets neste canal. Verifique se tem o cargo apropriado.';
-      } else if (error?.message?.includes('Canal') && error?.message?.includes('não encontrado')) {
-        errorMessage = '❌ Canal da equipe não encontrado. Verifique a configuração.';
-      } else if (error?.message?.includes('sessão expirada') || error?.message?.includes('Sessão expirada')) {
+
+      if (
+        error?.message?.includes('Missing Access') ||
+        error?.message?.includes('Missing Permissions')
+      ) {
+        errorMessage =
+          '❌ Você não tem permissão para criar tickets neste canal. Verifique se tem o cargo apropriado.';
+      } else if (
+        error?.message?.includes('Canal') &&
+        error?.message?.includes('não encontrado')
+      ) {
+        errorMessage =
+          '❌ Canal da equipe não encontrado. Verifique a configuração.';
+      } else if (
+        error?.message?.includes('sessão expirada') ||
+        error?.message?.includes('Sessão expirada')
+      ) {
         errorMessage = '❌ Sua sessão expirou. Crie um novo ticket.';
       } else if (error?.message?.includes('Cliente não encontrado')) {
         errorMessage = '❌ Cliente não encontrado. Tente novamente.';
       }
-      
+
       await interaction.reply({
         content: errorMessage,
         ephemeral: true,
@@ -578,5 +601,77 @@ export class FormHandlerService {
       content: '❌ Criação do ticket cancelada.',
       ephemeral: true,
     });
+  }
+
+  private async handleGeneralModal(
+    interaction: ModalSubmitInteraction,
+  ): Promise<void> {
+    try {
+      await interaction.deferReply({ ephemeral: true });
+
+      // Extrair dados do formulário
+      const formData: GeneralFormData = {
+        title: interaction.fields.getTextInputValue('title'),
+        description: interaction.fields.getTextInputValue('description'),
+      };
+
+      // Validar dados
+      if (!this.generalService.validateGeneralFormData(formData)) {
+        await interaction.editReply({
+          content:
+            '❌ Dados inválidos. Verifique se todos os campos obrigatórios foram preenchidos corretamente.',
+        });
+        return;
+      }
+
+      // Obter dados da sessão
+      const sessionKey = `${interaction.user.id}_${interaction.customId.replace('general_form_', '')}`;
+      const discordSession = this.discordService.getUserSession(sessionKey);
+
+      if (!discordSession) {
+        await interaction.editReply({
+          content:
+            '❌ Sessão expirada. Por favor, inicie o processo novamente.',
+        });
+        return;
+      }
+
+      // Armazenar dados da sessão no FormHandlerService para confirmação
+      this.userSessions.set(interaction.user.id, {
+        clientId: discordSession.clientId,
+        clientName: discordSession.clientName,
+        formData,
+        ticketData: {
+          clientId: discordSession.clientId,
+          clientName: discordSession.clientName,
+          category: 'general',
+          team: discordSession.team,
+          priority: discordSession.priority,
+          title: formData.title,
+          description: formData.description,
+        },
+      });
+
+      // Mostrar confirmação
+      const embed = GeneralForm.createConfirmationEmbed({
+        clientName: discordSession.clientName,
+        title: formData.title,
+        description: formData.description,
+        team: discordSession.team,
+        priority: discordSession.priority,
+      });
+
+      const confirmButton = GeneralForm.createConfirmationButtons();
+
+      await interaction.editReply({
+        embeds: [embed],
+        components: [confirmButton],
+      });
+    } catch (error) {
+      this.logger.error('Erro ao processar formulário geral:', error);
+      await interaction.editReply({
+        content: '❌ Erro interno ao processar o formulário. Tente novamente.',
+      });
+    }
   }
 }

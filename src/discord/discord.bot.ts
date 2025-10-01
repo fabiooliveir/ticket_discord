@@ -101,20 +101,31 @@ export class DiscordBot implements OnModuleInit, OnModuleDestroy {
 
           // Mapear erros específicos para mensagens mais claras
           let userMessage = '❌ Ocorreu um erro ao executar este comando!';
-          
+
           if (error?.code === 50001 || error?.code === 50013) {
-            userMessage = '❌ Você não tem permissão para executar esta ação. Verifique se tem acesso ao canal da equipe.';
+            userMessage =
+              '❌ Você não tem permissão para executar esta ação. Verifique se tem acesso ao canal da equipe.';
           } else if (error?.code === 10003) {
-            userMessage = '❌ Canal não encontrado. Verifique se o canal da equipe está configurado corretamente.';
+            userMessage =
+              '❌ Canal não encontrado. Verifique se o canal da equipe está configurado corretamente.';
           } else if (error?.code === 10008) {
-            userMessage = '❌ Thread não encontrada. O ticket pode ter sido movido ou excluído.';
+            userMessage =
+              '❌ Thread não encontrada. O ticket pode ter sido movido ou excluído.';
           } else if (error?.message?.includes('Missing Access')) {
-            userMessage = '❌ Acesso negado ao canal da equipe. Verifique suas permissões.';
+            userMessage =
+              '❌ Acesso negado ao canal da equipe. Verifique suas permissões.';
           } else if (error?.message?.includes('Missing Permissions')) {
             userMessage = '❌ Permissões insuficientes para esta ação.';
-          } else if (error?.message?.includes('Canal') && error?.message?.includes('não encontrado')) {
-            userMessage = '❌ Canal da equipe não encontrado. Verifique a configuração.';
-          } else if (error?.message?.includes('sessão expirada') || error?.message?.includes('Sessão expirada')) {
+          } else if (
+            error?.message?.includes('Canal') &&
+            error?.message?.includes('não encontrado')
+          ) {
+            userMessage =
+              '❌ Canal da equipe não encontrado. Verifique a configuração.';
+          } else if (
+            error?.message?.includes('sessão expirada') ||
+            error?.message?.includes('Sessão expirada')
+          ) {
             userMessage = '❌ Sua sessão expirou. Crie um novo ticket.';
           } else if (error?.message?.includes('Cliente não encontrado')) {
             userMessage = '❌ Cliente não encontrado. Tente novamente.';
