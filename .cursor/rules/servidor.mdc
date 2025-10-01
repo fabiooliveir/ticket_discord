@@ -1,0 +1,4 @@
+---
+alwaysApply: true
+conexao: ssh -i ~/.ssh/id_rsa fboliveiran@34.39.185.159
+---

@@ -69,6 +69,23 @@ export class DiscordService {
           },
         ],
       },
+      {
+        name: 'ajuda',
+        description: 'Como usar os tickets e os botões',
+        options: [
+          {
+            name: 'topico',
+            description: 'Escolha um tópico de ajuda',
+            type: 3, // STRING
+            required: false,
+            choices: [
+              { name: 'Geral', value: 'geral' },
+              { name: 'Criar', value: 'criar' },
+              { name: 'Botões', value: 'botoes' },
+            ],
+          },
+        ],
+      },
     ];
   }
 
@@ -78,6 +95,9 @@ export class DiscordService {
     switch (commandName) {
       case 'criar-ticket':
         await this.handleCreateTicketSlash(interaction, options);
+        break;
+      case 'ajuda':
+        await this.handleHelpCommand(interaction, options);
         break;
       default:
         await interaction.reply({
@@ -1480,6 +1500,109 @@ export class DiscordService {
         return '🟢 Baixa';
       default:
         return 'Desconhecida';
+    }
+  }
+
+  private buildHelpEmbed(topic: string) {
+    const embed = new EmbedBuilder();
+
+    if (topic === 'criar') {
+      embed
+        .setTitle('🎟️ Criar ticket')
+        .setDescription('Use o comando abaixo para abrir um ticket e falar com a equipe.')
+        .addFields(
+          {
+            name: 'Sintaxe',
+            value: '`/criar-ticket cliente:<nome>`\nEscolha o cliente pelo autocomplete.',
+          },
+          {
+            name: 'Exemplo',
+            value: '`/criar-ticket cliente: ACME Ltd`',
+          },
+          {
+            name: 'Como funciona',
+            value:
+              'Após criar, uma thread é aberta para conversar com a equipe. Escreva suas mensagens dentro da thread.',
+          },
+          {
+            name: 'Erros comuns',
+            value:
+              '• Cliente não selecionado → selecione uma opção do autocomplete.\n• Canal inválido → use o canal indicado pela equipe (se aplicável).',
+          },
+        )
+        .setColor(0x5865f2);
+      return embed;
+    }
+
+    if (topic === 'botoes') {
+      embed
+        .setTitle('🔘 Botões do ticket')
+        .setDescription('Gerencie seu ticket usando os botões na mensagem do ticket ou na thread.')
+        .addFields(
+          {
+            name: 'Ações padrão',
+            value:
+              '• 👤 **Puxar para mim**: você se torna o responsável pelo ticket.\n• ⏳ **Aguardando cliente**: marca que estamos aguardando resposta do cliente.\n• 📁 **Arquivar**: encerra o ticket e arquiva a thread.',
+          },
+          {
+            name: 'Ações contextuais',
+            value:
+              '• **Prioridade** (ex.: Alta) e **Formulários** podem aparecer conforme o fluxo.',
+          },
+          {
+            name: 'Regras e dicas',
+            value:
+              '• Arquivar encerra o ticket (status fechado).\n• Algumas ações exigem permissões.\n• Confira se está na thread correta antes de clicar.',
+          },
+        )
+        .setColor(0x5865f2);
+      return embed;
+    }
+
+    // padrão: geral
+    embed
+      .setTitle('🎫 Como usar tickets')
+      .setDescription(
+        'Crie um ticket com `/criar-ticket cliente:<nome>`, converse com a equipe na thread criada e use os botões para gerenciar.',
+      )
+      .addFields(
+        {
+          name: 'Passo a passo',
+          value:
+            '1) Use `/criar-ticket` e selecione o cliente pelo autocomplete.\n2) Fale com a equipe na thread do ticket.\n3) Use os botões (👤 Puxar, ⏳ Aguardando cliente, 📁 Arquivar) quando necessário.',
+        },
+        {
+          name: 'Dicas rápidas',
+          value:
+            '• Um ticket por assunto.\n• Evite dados sensíveis.\n• Se um botão não responder, tente novamente ou avise a equipe.',
+        },
+      )
+      .setColor(0x5865f2);
+    return embed;
+  }
+
+  private async handleHelpCommand(interaction: any, options: any) {
+    try {
+      const topic = options?.getString?.('topico') || 'geral';
+      const embed = this.buildHelpEmbed(topic);
+
+      await interaction.reply({
+        embeds: [embed],
+        ephemeral: true,
+      });
+    } catch (error) {
+      this.logger.error('Erro ao exibir ajuda:', error);
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({
+          content: '❌ Não foi possível exibir a ajuda no momento.',
+          ephemeral: true,
+        });
+      } else {
+        await interaction.reply({
+          content: '❌ Não foi possível exibir a ajuda no momento.',
+          ephemeral: true,
+        });
+      }
     }
   }
 }

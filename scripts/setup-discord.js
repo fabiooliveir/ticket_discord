@@ -16,6 +16,23 @@ async function setupDiscordCommands() {
         },
       ],
     },
+    {
+      name: 'ajuda',
+      description: 'Como usar os tickets e os botões',
+      options: [
+        {
+          name: 'topico',
+          description: 'Escolha um tópico de ajuda',
+          type: 3, // STRING
+          required: false,
+          choices: [
+            { name: 'Geral', value: 'geral' },
+            { name: 'Criar', value: 'criar' },
+            { name: 'Botões', value: 'botoes' },
+          ],
+        },
+      ],
+    },
   ];
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);

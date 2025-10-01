@@ -59,6 +59,12 @@ export class DiscordBot implements OnModuleInit, OnModuleDestroy {
       },
     });
 
+    this.commands.set('ajuda', {
+      execute: async (interaction) => {
+        await this.discordService.handleSlashCommand(interaction);
+      },
+    });
+
     // Evento de ready
     this.client.once(Events.ClientReady, (readyClient) => {
       this.logger.log(`✅ Bot ${readyClient.user.tag} está online!`);
