@@ -186,12 +186,52 @@ export class DiscordService {
         return;
       }
 
+      // Determinar equipe baseada no canal onde o comando foi executado
+      const channelId = interaction.channelId;
+      const teams = this.teamsService.getTeamsConfig();
+      const currentTeam = teams.find(team => team.channelId === channelId);
+      
+      if (!currentTeam) {
+        await interaction.editReply({
+          content: '❌ Este comando só pode ser usado nos canais das equipes (Suporte, CS ou Tráfego).',
+        });
+        return;
+      }
+
+      // Verificar se o usuário tem acesso ao canal da equipe
+      const hasAccess = await this.teamsService.hasChannelAccess(interaction.user.id, currentTeam);
+      if (!hasAccess) {
+        await interaction.editReply({
+          content: `❌ Você não tem permissão para abrir tickets no canal da equipe ${currentTeam.name}. Verifique se tem o cargo apropriado.`,
+        });
+        return;
+      }
+
+      // Armazenar dados da sessão com a equipe correta
+      const sessionKey = `${interaction.user.id}_${selectedClient.id}`;
+      this.userSessions.set(sessionKey, {
+        clientId: selectedClient.id,
+        clientName: selectedClient.name,
+        team: this.getTeamKeyByChannelId(channelId),
+        priority: 'medium',
+        category: 'correction-tagging', // Padrão para slash command
+      });
+
       // Prosseguir com a criação do ticket usando o cliente selecionado
       await this.handleClientSelected(interaction, selectedClient.id);
     } catch (error) {
       this.logger.error('Erro ao criar ticket via slash command:', error);
+      
+      let errorMessage = '❌ Erro interno ao criar ticket. Tente novamente.';
+      
+      if (error?.message?.includes('Missing Access') || error?.message?.includes('Missing Permissions')) {
+        errorMessage = '❌ Você não tem permissão para acessar o canal da equipe.';
+      } else if (error?.message?.includes('Canal') && error?.message?.includes('não encontrado')) {
+        errorMessage = '❌ Canal da equipe não encontrado. Verifique a configuração.';
+      }
+      
       await interaction.editReply({
-        content: '❌ Erro interno ao criar ticket. Tente novamente.',
+        content: errorMessage,
       });
     }
   }
@@ -356,7 +396,19 @@ export class DiscordService {
       return thread;
     } catch (error) {
       this.logger.error('Erro ao criar thread do ticket:', error);
-      return null;
+      
+      // Re-lançar erro com mensagem específica para ser capturada pelo handler
+      if (error?.code === 50001 || error?.code === 50013) {
+        throw new Error('Missing Access: Você não tem permissão para criar threads neste canal.');
+      } else if (error?.code === 10003) {
+        throw new Error('Canal não encontrado: O canal da equipe não existe ou foi removido.');
+      } else if (error?.message?.includes('Missing Access')) {
+        throw new Error('Missing Access: Acesso negado ao canal da equipe.');
+      } else if (error?.message?.includes('Missing Permissions')) {
+        throw new Error('Missing Permissions: Permissões insuficientes para criar thread.');
+      }
+      
+      throw error; // Re-lançar erro original se não for mapeado
     }
   }
 
@@ -373,6 +425,23 @@ export class DiscordService {
 
     const teamName = teamMapping[teamValue] || teamValue;
     return teams.find((team) => team.name === teamName) || teams[0]; // Fallback para suporte
+  }
+
+  // Método para obter chave da equipe por ID do canal
+  private getTeamKeyByChannelId(channelId: string): string {
+    const teams = this.teamsService.getTeamsConfig();
+    const team = teams.find(t => t.channelId === channelId);
+    
+    if (!team) return 'suporte'; // Fallback
+    
+    // Mapear nome da equipe para chave
+    const nameToKey = {
+      'Suporte Técnico': 'suporte',
+      'Customer Success': 'cs',
+      'Tráfego Pago': 'trafico',
+    };
+    
+    return nameToKey[team.name] || 'suporte';
   }
 
   async handleButtonInteraction(interaction: any) {

@@ -386,8 +386,21 @@ export class FormHandlerService {
       this.userSessions.delete(interaction.user.id);
     } catch (error) {
       this.logger.error('Erro ao confirmar ticket:', error);
+      
+      let errorMessage = '❌ Erro ao confirmar ticket!';
+      
+      if (error?.message?.includes('Missing Access') || error?.message?.includes('Missing Permissions')) {
+        errorMessage = '❌ Você não tem permissão para criar tickets neste canal. Verifique se tem o cargo apropriado.';
+      } else if (error?.message?.includes('Canal') && error?.message?.includes('não encontrado')) {
+        errorMessage = '❌ Canal da equipe não encontrado. Verifique a configuração.';
+      } else if (error?.message?.includes('sessão expirada') || error?.message?.includes('Sessão expirada')) {
+        errorMessage = '❌ Sua sessão expirou. Crie um novo ticket.';
+      } else if (error?.message?.includes('Cliente não encontrado')) {
+        errorMessage = '❌ Cliente não encontrado. Tente novamente.';
+      }
+      
       await interaction.reply({
-        content: '❌ Erro ao confirmar ticket!',
+        content: errorMessage,
         ephemeral: true,
       });
     }
