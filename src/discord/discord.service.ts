@@ -259,6 +259,7 @@ export class DiscordService {
       category: string;
       priority: string;
       author: string;
+      authorId: string; // novo
       formData?: any; // Dados do formulário
     },
   ): Promise<ThreadChannel | null> {
@@ -286,11 +287,24 @@ export class DiscordService {
       // Criar thread com nome do ticket
       const threadName = `🔴 🎫 ${ticketData.clientName}`.substring(0, 100);
 
-      const thread = await (channel as any).threads.create({
-        name: threadName,
-        autoArchiveDuration: 10080, // 7 dias (máximo permitido pelo Discord)
-        reason: `Ticket criado por ${ticketData.author}`,
-      });
+      let thread: ThreadChannel;
+      try {
+        // Tentar criar thread privada primeiro
+        thread = await (channel as any).threads.create({
+          name: threadName,
+          autoArchiveDuration: 10080, // 7 dias (máximo permitido pelo Discord)
+          reason: `Ticket criado por ${ticketData.author}`,
+          type: ChannelType.PrivateThread,
+        });
+      } catch (privateError) {
+        this.logger.warn(`Não foi possível criar thread privada, criando thread pública: ${String(privateError)}`);
+        // Fallback para thread pública se não tiver permissão para thread privada
+        thread = await (channel as any).threads.create({
+          name: threadName,
+          autoArchiveDuration: 10080,
+          reason: `Ticket criado por ${ticketData.author}`,
+        });
+      }
 
       // Criar embed inicial do ticket
       let embed = new EmbedBuilder()
@@ -413,6 +427,16 @@ export class DiscordService {
         pullButton,
         archiveButton,
       );
+
+      // Adicionar o autor como membro da thread privada
+      try {
+        if (ticketData.authorId && thread.type === ChannelType.PrivateThread) {
+          await thread.members.add(ticketData.authorId);
+          this.logger.log(`Autor ${ticketData.authorId} adicionado à thread privada ${thread.id}`);
+        }
+      } catch (addErr) {
+        this.logger.warn(`Não foi possível adicionar o autor à thread: ${String(addErr)}`);
+      }
 
       // Enviar mensagem inicial na thread
       await thread.send({

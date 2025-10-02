@@ -359,6 +359,7 @@ export class FormHandlerService {
         category: categoryText,
         priority: session.ticketData.priority || 'medium',
         author: interaction.user.tag,
+        authorId: interaction.user.id,
         formData: session.formData, // Passar dados do formulário
       });
 
@@ -390,7 +391,7 @@ export class FormHandlerService {
       }
 
       await interaction.reply({
-        content: `✅ Ticket de ${categoryText.toLowerCase()} criado com sucesso!\n**ID:** ${ticket.id}\n**Cliente:** ${session.clientName}${specificInfo}${thread ? `\n**Thread:** <#${thread.id}>` : ''}`,
+        content: `✅ Ticket de ${categoryText.toLowerCase()} criado com sucesso!\n**ID:** ${ticket.id}\n**Cliente:** ${session.clientName}${specificInfo}${thread ? `\n**Thread:** <#${thread.id}>\n\n💡 **Dica:** A thread aparecerá na barra lateral para você acompanhar o progresso!` : ''}`,
         ephemeral: true,
       });
 
@@ -461,6 +462,7 @@ export class FormHandlerService {
         category: 'Novo Tagueamento',
         priority: session.ticketData.priority || 'medium',
         author: interaction.user.tag,
+        authorId: interaction.user.id,
       });
 
       // Atualizar ticket com informações da thread
@@ -476,7 +478,7 @@ export class FormHandlerService {
       }
 
       await interaction.reply({
-        content: `✅ Ticket de novo tagueamento criado com sucesso!\n**ID:** ${ticket.id}\n**Cliente:** ${session.clientName}\n**Site:** ${session.formData.website}${thread ? `\n**Thread:** <#${thread.id}>` : ''}`,
+        content: `✅ Ticket de novo tagueamento criado com sucesso!\n**ID:** ${ticket.id}\n**Cliente:** ${session.clientName}\n**Site:** ${session.formData.website}${thread ? `\n**Thread:** <#${thread.id}>\n\n💡 **Dica:** A thread aparecerá na barra lateral para você acompanhar o progresso!` : ''}`,
         ephemeral: true,
       });
 
