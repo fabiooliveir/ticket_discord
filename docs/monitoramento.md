@@ -2,6 +2,26 @@
 
 Este documento descreve como monitorar, operar e reiniciar o sistema de tickets em produção.
 
+### Sumário dos Serviços
+
+| Serviço | Porta | Status | Como Restartar | Dependências | Observações |
+|---------|-------|--------|----------------|--------------|-------------|
+| **MariaDB** | 3306 | systemctl | `sudo systemctl restart mariadb` | - | Banco de dados (primeiro a subir) |
+| **Backend (PM2)** | 3000 | pm2 | `pm2 restart ticket_discord` | MariaDB | API Node.js/NestJS |
+| **Frontend** | 80 | Nginx | Deploy + `sudo systemctl reload nginx` | Nginx | React estático (servido via Nginx) |
+| **Nginx** | 80 | systemctl | `sudo systemctl restart nginx` | - | Servidor web + Proxy reverso |
+
+**Ordem de Restart (se necessário):**
+1. MariaDB → 2. Backend (PM2) → 3. Frontend (deploy) → 4. Nginx
+
+**Comandos de Verificação Rápida:**
+```bash
+# Status geral
+systemctl status mariadb nginx
+pm2 status
+ss -tlnp | grep -E ':(80|3000|3306)'
+```
+
 ### Visão Geral
 
 - **Diretório do projeto**: `/opt/ticket_discord`
@@ -56,6 +76,25 @@ Este documento descreve como monitorar, operar e reiniciar o sistema de tickets 
   sudo tail -f /var/log/nginx/access.log /var/log/nginx/error.log
   ```
 
+### MariaDB (Banco de Dados)
+
+- **Porta**: `3306`
+- **Serviço**: `mariadb.service`
+- **Comandos úteis**:
+  ```bash
+  # Status
+  sudo systemctl status mariadb
+
+  # Restart
+  sudo systemctl restart mariadb
+
+  # Conectar ao banco
+  mysql -u ticket_user -p ticket_discord
+
+  # Verificar processos ativos
+  sudo netstat -tlnp | grep :3306
+  ```
+
 ### Backend (API)
 
 - **Porta**: `3000`
@@ -106,11 +145,11 @@ Este documento descreve como monitorar, operar e reiniciar o sistema de tickets 
 
 - **Portas e processos**:
   ```bash
-  # Quem escuta 80 e 3000
-  sudo netstat -tlnp | grep -E ':(80|3000)' || ss -tlnp | grep -E ':(80|3000)'
+  # Quem escuta 80, 3000 e 3306
+  sudo netstat -tlnp | grep -E ':(80|3000|3306)' || ss -tlnp | grep -E ':(80|3000|3306)'
 
   # Processos relevantes
-  ps aux | grep -E '(nginx|node)' | grep -v grep
+  ps aux | grep -E '(nginx|node|mysql)' | grep -v grep
   ```
 
 - **Recursos**:
@@ -155,9 +194,26 @@ Este documento descreve como monitorar, operar e reiniciar o sistema de tickets 
 
 - **Verificar tudo no ar**:
   ```bash
-  systemctl status nginx | cat
+  systemctl status nginx mariadb | cat
   curl -I http://localhost                 # Frontend
   ss -tlnp | grep :3000                    # Backend ouvindo
+  ss -tlnp | grep :3306                    # MariaDB ouvindo
+  ```
+
+- **Reiniciar MariaDB**:
+  ```bash
+  sudo systemctl restart mariadb
+  ```
+
+- **Atualizar Frontend (Deploy)**:
+  ```bash
+  # Na máquina local
+  npm run build --prefix frontend
+  rsync -az --delete frontend/build/ \
+    -e "ssh -i ~/.ssh/id_rsa" fboliveiran@34.39.185.159:/opt/ticket_discord/frontend/build/
+  
+  # Reload Nginx (se necessário)
+  ssh -i ~/.ssh/id_rsa fboliveiran@34.39.185.159 "sudo systemctl reload nginx"
   ```
 
 - **Reiniciar Nginx**:
@@ -165,10 +221,9 @@ Este documento descreve como monitorar, operar e reiniciar o sistema de tickets 
   sudo systemctl reload nginx
   ```
 
-- **Reiniciar Backend (manual atual)**:
+- **Reiniciar Backend (PM2)**:
   ```bash
-  pkill -f 'node .*dist/main.js'
-  cd /opt/ticket_discord && nohup node dist/main.js > backend.out 2>&1 &
+  pm2 restart ticket_discord
   ```
 
 ### Troubleshooting
