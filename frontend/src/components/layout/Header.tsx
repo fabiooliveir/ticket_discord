@@ -15,7 +15,9 @@ import {
   Refresh,
   Settings,
   Logout,
+  Person,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useHealthCheck } from '../../hooks/useDashboard';
 
 interface HeaderProps {
@@ -32,6 +34,7 @@ const Header: React.FC<HeaderProps> = ({
   notificationCount = 0,
 }) => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const { isHealthy, loading } = useHealthCheck();
 
   const getHealthStatus = () => {
@@ -123,6 +126,18 @@ const Header: React.FC<HeaderProps> = ({
             >
               <Notifications />
             </Badge>
+          </IconButton>
+
+          {/* Conta */}
+          <IconButton
+            onClick={() => navigate('/account')}
+            color="inherit"
+            title="Configurações da Conta"
+            sx={{
+              color: theme.palette.text.primary,
+            }}
+          >
+            <Person />
           </IconButton>
 
           {/* Configurações */}

@@ -50,7 +50,7 @@ export class AuthService {
 
     const payload = {
       username: user.username,
-      sub: user.id,
+      sub: Number(user.id), // Garantir que é um número
       email: user.email,
       role: user.role,
       isActive: user.isActive,
@@ -82,6 +82,7 @@ export class AuthService {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
 
+      console.log('🔍 AuthService.refreshToken - payload.sub:', payload.sub, 'type:', typeof payload.sub);
       const user = await this.usersService.findOne(payload.sub);
 
       if (!user || !user.isActive) {
@@ -90,7 +91,7 @@ export class AuthService {
 
       const newPayload = {
         username: user.username,
-        sub: user.id,
+        sub: Number(user.id), // Garantir que é um número
         email: user.email,
         role: user.role,
         isActive: user.isActive,
@@ -109,6 +110,7 @@ export class AuthService {
   async validateToken(token: string): Promise<User | null> {
     try {
       const payload = this.jwtService.verify(token);
+      console.log('🔍 AuthService.validateToken - payload.sub:', payload.sub, 'type:', typeof payload.sub);
       const user = await this.usersService.findOne(payload.sub);
 
       if (!user || !user.isActive) {

@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,6 +10,8 @@ import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class UsersService {
@@ -62,6 +65,13 @@ export class UsersService {
   }
 
   async findOne(id: number): Promise<User> {
+    console.log('🔍 UsersService.findOne called with id:', id, 'type:', typeof id);
+    
+    if (isNaN(id) || id <= 0) {
+      console.error('❌ UsersService.findOne - ID inválido:', id, 'isNaN:', isNaN(id));
+      throw new UnauthorizedException('ID de usuário inválido');
+    }
+    
     const user = await this.usersRepository.findOne({
       where: { id },
       select: [
@@ -75,6 +85,8 @@ export class UsersService {
         'updatedAt',
       ],
     });
+
+    console.log('✅ UsersService.findOne - Found user:', user);
 
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
@@ -139,5 +151,111 @@ export class UsersService {
 
   async updateLastLogin(id: number): Promise<void> {
     await this.usersRepository.update(id, { lastLogin: new Date() });
+  }
+
+  async getMe(id: number): Promise<User> {
+    try {
+      console.log('🔍 UsersService.getMe called with id:', id, 'type:', typeof id);
+      
+      // Validar se o ID é um número válido
+      if (isNaN(id) || id <= 0) {
+        console.error('❌ UsersService.getMe - ID inválido:', id, 'isNaN:', isNaN(id));
+        throw new UnauthorizedException('ID de usuário inválido');
+      }
+      
+      console.log('🔍 UsersService.getMe - Querying database with id:', id);
+      
+      const user = await this.usersRepository.findOne({
+        where: { id },
+        select: [
+          'id',
+          'username',
+          'email',
+          'role',
+          'isActive',
+          'lastLogin',
+          'createdAt',
+          'updatedAt',
+        ],
+      });
+
+      console.log('✅ UsersService.getMe - Found user:', user);
+
+      if (!user) {
+        throw new NotFoundException('Usuário não encontrado');
+      }
+
+      return user;
+    } catch (error) {
+      console.error('❌ Error in UsersService.getMe:', error);
+      throw error;
+    }
+  }
+
+  async updateMe(id: number, updateProfileDto: UpdateProfileDto): Promise<User> {
+    console.log('🔍 UsersService.updateMe called with id:', id, 'type:', typeof id);
+    const user = await this.findOne(id);
+
+    // Verificar se email já existe (se estiver sendo alterado)
+    if (updateProfileDto.email && updateProfileDto.email !== user.email) {
+      const existingUser = await this.usersRepository.findOne({
+        where: { email: updateProfileDto.email },
+      });
+
+      if (existingUser) {
+        throw new ConflictException('Email já está em uso');
+      }
+    }
+
+    // Atualizar apenas os campos fornecidos
+    const updateData: Partial<User> = {};
+    if (updateProfileDto.email !== undefined) {
+      updateData.email = updateProfileDto.email;
+    }
+    if (updateProfileDto.phone !== undefined) {
+      updateData.phone = updateProfileDto.phone;
+    }
+
+    await this.usersRepository.update(id, updateData);
+    return this.getMe(id);
+  }
+
+  async changePassword(id: number, changePasswordDto: ChangePasswordDto): Promise<void> {
+    console.log('🔍 UsersService.changePassword called with id:', id, 'type:', typeof id);
+    
+    if (isNaN(id) || id <= 0) {
+      console.error('❌ UsersService.changePassword - ID inválido:', id, 'isNaN:', isNaN(id));
+      throw new UnauthorizedException('ID de usuário inválido');
+    }
+    
+    const user = await this.usersRepository.findOne({
+      where: { id },
+    });
+
+    console.log('✅ UsersService.changePassword - Found user:', user);
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    // Verificar senha atual
+    const isCurrentPasswordValid = await this.validatePassword(
+      changePasswordDto.currentPassword,
+      user.password,
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new ConflictException('Senha atual incorreta');
+    }
+
+    // Hash da nova senha
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(
+      changePasswordDto.newPassword,
+      saltRounds,
+    );
+
+    // Atualizar senha
+    await this.usersRepository.update(id, { password: hashedPassword });
   }
 }

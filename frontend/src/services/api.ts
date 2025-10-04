@@ -209,6 +209,22 @@ class ApiService {
       return false;
     }
   }
+
+  // User Profile Management
+  async getCurrentUser(): Promise<any> {
+    const response = await this.api.get('/users/me');
+    return response.data;
+  }
+
+  async updateMyProfile(data: { email?: string; phone?: string }): Promise<any> {
+    const response = await this.api.patch('/users/me', data);
+    return response.data;
+  }
+
+  async changeMyPassword(data: { currentPassword: string; newPassword: string }): Promise<any> {
+    const response = await this.api.patch('/users/me/password', data);
+    return response.data;
+  }
 }
 
 // Instância singleton

@@ -3,6 +3,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import DashboardPage from './pages/DashboardPage';
+import AccountPage from './pages/AccountPage';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import PrivateRoute from './components/routes/PrivateRoute';
 import LoginPage from './pages/LoginPage';
@@ -108,6 +109,7 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
               <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+              <Route path="/account" element={<PrivateRoute><AccountPage /></PrivateRoute>} />
               <Route path="*" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
             </Routes>
           </Box>
