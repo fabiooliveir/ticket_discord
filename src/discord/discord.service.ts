@@ -326,7 +326,7 @@ export class DiscordService {
         .setFooter({ text: `Criado por ${ticketData.author}` });
 
       // Adicionar campos específicos baseados na categoria
-      if (ticketData.category === 'new-tagging' && ticketData.formData) {
+      if (ticketData.category === 'Novo Tagueamento' && ticketData.formData) {
         embed = embed.addFields(
           {
             name: 'Meta Account ID',
@@ -350,7 +350,7 @@ export class DiscordService {
           },
         );
       } else if (
-        ticketData.category === 'correction-tagging' &&
+        ticketData.category === 'Correção de Tagueamento' &&
         ticketData.formData
       ) {
         embed = embed.addFields(
