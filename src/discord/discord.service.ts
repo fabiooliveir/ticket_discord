@@ -416,6 +416,13 @@ export class DiscordService {
         .setStyle(ButtonStyle.Primary)
         .setEmoji('👤');
 
+      // Botão para transferir ticket
+      const transferButton = new ButtonBuilder()
+        .setCustomId(`transfer_ticket_${ticketData.id}`)
+        .setLabel('Transferir')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('🔄');
+
       // Botão para arquivar thread
       const archiveButton = new ButtonBuilder()
         .setCustomId(`archive_thread_${ticketData.id}`)
@@ -425,6 +432,7 @@ export class DiscordService {
 
       const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         pullButton,
+        transferButton,
         archiveButton,
       );
 
@@ -521,6 +529,9 @@ export class DiscordService {
     } else if (customId.startsWith('waiting_client_')) {
       const ticketId = customId.replace('waiting_client_', '');
       await this.handleTicketStatusChange(interaction, ticketId);
+    } else if (customId.startsWith('transfer_ticket_')) {
+      const ticketId = customId.replace('transfer_ticket_', '');
+      await this.handleTransferTicket(interaction, ticketId);
     } else if (customId.startsWith('archive_thread_')) {
       const ticketId = customId.replace('archive_thread_', '');
       await this.handleArchiveThread(interaction, ticketId);
@@ -687,6 +698,12 @@ export class DiscordService {
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('⏳');
 
+      const transferButton = new ButtonBuilder()
+        .setCustomId(`transfer_ticket_${ticketId}`)
+        .setLabel('Transferir')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('🔄');
+
       const archiveButton = new ButtonBuilder()
         .setCustomId(`archive_thread_${ticketId}`)
         .setLabel('Arquivar')
@@ -695,6 +712,7 @@ export class DiscordService {
 
       const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         waitingClientButton,
+        transferButton,
         archiveButton,
       );
 
@@ -838,6 +856,12 @@ export class DiscordService {
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('⏳');
 
+      const transferButton = new ButtonBuilder()
+        .setCustomId(`transfer_ticket_${ticketId}`)
+        .setLabel('Transferir')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('🔄');
+
       const archiveButton = new ButtonBuilder()
         .setCustomId(`archive_thread_${ticketId}`)
         .setLabel('Arquivar')
@@ -846,6 +870,7 @@ export class DiscordService {
 
       const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         waitingClientButton,
+        transferButton,
         archiveButton,
       );
 
@@ -961,6 +986,163 @@ export class DiscordService {
             content: '❌ Erro ao arquivar thread. Tente novamente.',
           });
         }
+      } catch (replyError) {
+        this.logger.error('Erro ao responder interação:', replyError);
+      }
+    }
+  }
+
+  private async handleTransferTicket(interaction: any, ticketId: string) {
+    try {
+      // Defer a resposta imediatamente para evitar timeout
+      await interaction.deferReply({ ephemeral: true });
+
+      // Buscar ticket no banco de dados
+      const ticket = await this.ticketRepository.findOne({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        await interaction.editReply({
+          content: '❌ Ticket não encontrado!',
+        });
+        return;
+      }
+
+      // Determinar a equipe do ticket
+      const team = this.getTeamByName(
+        ticket.metadata?.team || 'Suporte Técnico',
+      );
+
+      // Buscar membros da equipe
+      const guild = this.teamsService.discordBot.client.guilds.cache.first();
+      if (!guild) {
+        await interaction.editReply({
+          content: '❌ Não foi possível acessar o servidor Discord!',
+        });
+        return;
+      }
+
+      const role = await guild.roles.fetch(team.roleId);
+      if (!role) {
+        await interaction.editReply({
+          content: '❌ Cargo da equipe não encontrado!',
+        });
+        return;
+      }
+
+      const members = role.members;
+      if (members.size === 0) {
+        await interaction.editReply({
+          content: '❌ Nenhum membro encontrado na equipe!',
+        });
+        return;
+      }
+
+      // Criar opções do select menu (máximo 25 opções)
+      const options: Array<{
+        label: string;
+        description: string;
+        value: string;
+      }> = [];
+      for (const [userId, member] of members) {
+        if (options.length >= 25) break; // Limite do Discord
+        
+        options.push({
+          label: member.displayName || member.user.username,
+          description: `Transferir ticket para ${member.displayName || member.user.username}`,
+          value: userId,
+        });
+      }
+
+      // Criar select menu
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId(`transfer_select_${ticketId}`)
+        .setPlaceholder('Selecione um membro da equipe para transferir o ticket')
+        .addOptions(options);
+
+      const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>()
+        .addComponents(selectMenu);
+
+      await interaction.editReply({
+        content: `🔄 **Transferir Ticket #${ticketId}**\nSelecione o membro da equipe para quem deseja transferir este ticket:`,
+        components: [selectRow],
+      });
+
+    } catch (error) {
+      this.logger.error('Erro ao transferir ticket:', error);
+      try {
+        await interaction.editReply({
+          content: '❌ Erro ao transferir ticket. Tente novamente.',
+        });
+      } catch (replyError) {
+        this.logger.error('Erro ao responder interação:', replyError);
+      }
+    }
+  }
+
+  private async handleTransferSelection(interaction: any, ticketId: string) {
+    try {
+      // Defer a resposta imediatamente para evitar timeout
+      await interaction.deferReply({ ephemeral: true });
+
+      // Obter o usuário selecionado
+      const selectedUserId = interaction.values[0];
+      const selectedMember = interaction.guild.members.cache.get(selectedUserId);
+
+      if (!selectedMember) {
+        await interaction.editReply({
+          content: '❌ Membro selecionado não encontrado!',
+        });
+        return;
+      }
+
+      // Buscar ticket no banco de dados
+      const ticket = await this.ticketRepository.findOne({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        await interaction.editReply({
+          content: '❌ Ticket não encontrado!',
+        });
+        return;
+      }
+
+      // Atualizar campo assignedTo no banco
+      await this.ticketRepository.update(ticketId, {
+        assignedTo: selectedUserId,
+      });
+
+      // Invalidar cache do ticket após atualização
+      this.messageHandlerService.invalidateTicketCache(ticketId);
+
+      // Enviar mensagem de confirmação no thread
+      if (interaction.channel && interaction.channel.isThread()) {
+        const embed = new EmbedBuilder()
+          .setTitle('🔄 Ticket Transferido')
+          .setDescription(`Ticket #${ticketId} foi transferido para <@${selectedUserId}> por <@${interaction.user.id}>`)
+          .setColor(0x4CAF50)
+          .setTimestamp()
+          .setFooter({ text: `Transferido por ${interaction.user.tag}` });
+
+        await interaction.channel.send({
+          embeds: [embed],
+        });
+      }
+
+      await interaction.editReply({
+        content: `✅ Ticket transferido com sucesso para <@${selectedUserId}>!`,
+      });
+
+      this.logger.log(`Ticket ${ticketId} transferido para ${selectedMember.user.tag} por ${interaction.user.tag}`);
+
+    } catch (error) {
+      this.logger.error('Erro ao processar seleção de transferência:', error);
+      try {
+        await interaction.editReply({
+          content: '❌ Erro ao transferir ticket. Tente novamente.',
+        });
       } catch (replyError) {
         this.logger.error('Erro ao responder interação:', replyError);
       }
@@ -1334,6 +1516,9 @@ export class DiscordService {
       const clientId = customId.replace('select_priority_', '');
       const priority = interaction.values[0];
       await this.handlePrioritySelected(interaction, clientId, priority);
+    } else if (customId.startsWith('transfer_select_')) {
+      const ticketId = customId.replace('transfer_select_', '');
+      await this.handleTransferSelection(interaction, ticketId);
     } else {
       // Para outros tipos de seleção, responder com erro
       await interaction.reply({
