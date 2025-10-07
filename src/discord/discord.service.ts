@@ -579,7 +579,8 @@ export class DiscordService {
 
       // Atualizar nome da thread para indicar que foi atribuído (emoji verde ativo)
       if (interaction.channel && interaction.channel.isThread()) {
-        const newThreadName = `🟢 🎫 ${ticket.metadata?.clientName || 'Cliente'}`;
+        const username = interaction.user.username || interaction.user.tag.split('#')[0];
+        const newThreadName = `🟢 🎫 ${username} | ${ticket.metadata?.clientName || 'Cliente'}`;
         await interaction.channel.setName(newThreadName);
       }
 
@@ -910,17 +911,20 @@ export class DiscordService {
 
       await interaction.update({ embeds: [updatedEmbed], components: [buttonRow] });
 
-      // Atualizar nome da thread baseado no estado (manter emoji verde sempre)
+      // Atualizar nome da thread mantendo o username do responsável
       if (interaction.channel && interaction.channel.isThread()) {
         try {
+          const username = interaction.user.username || interaction.user.tag.split('#')[0];
           const clientNameFromMeta = ticket.metadata?.clientName;
           // Se por algum motivo o nome do cliente não estiver no metadata, tenta extrair do nome atual da thread
           const currentName = (interaction.channel as any).name || '';
-          const extractedClientName = currentName.includes('🎫')
+          const extractedClientName = currentName.includes('|')
+            ? currentName.split('|').slice(-1)[0].trim()
+            : currentName.includes('🎫')
             ? currentName.split('🎫').slice(1).join('🎫').trim()
             : currentName;
           const safeClientName = (clientNameFromMeta || extractedClientName || 'Cliente').substring(0, 100);
-          const newThreadName = `🟢 🎫 ${safeClientName}`;
+          const newThreadName = `🟢 🎫 ${username} | ${safeClientName}`;
           await interaction.channel.setName(newThreadName);
         } catch (renameErr) {
           this.logger.warn(`Não foi possível renomear a thread: ${String(renameErr)}`);
@@ -1154,6 +1158,13 @@ export class DiscordService {
       await this.ticketRepository.update(ticketId, {
         assignedTo: selectedUserId,
       });
+
+      // Atualizar nome da thread com o novo responsável
+      if (interaction.channel && interaction.channel.isThread()) {
+        const username = selectedMember.user.username || selectedMember.user.tag.split('#')[0];
+        const newThreadName = `🟢 🎫 ${username} | ${ticket.metadata?.clientName || 'Cliente'}`;
+        await interaction.channel.setName(newThreadName);
+      }
 
       // Invalidar cache do ticket após atualização
       this.messageHandlerService.invalidateTicketCache(ticketId);
