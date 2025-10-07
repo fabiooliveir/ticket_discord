@@ -59,6 +59,7 @@ export class TicketCategoryService {
             { label: 'Suporte Técnico', value: 'suporte' },
             { label: 'Customer Success', value: 'cs' },
             { label: 'Tráfego Pago', value: 'trafico' },
+            { label: 'Financeiro', value: 'financeiro' },
           ],
         },
         {
@@ -121,6 +122,7 @@ export class TicketCategoryService {
             { label: 'Suporte Técnico', value: 'suporte' },
             { label: 'Customer Success', value: 'cs' },
             { label: 'Tráfego Pago', value: 'trafico' },
+            { label: 'Financeiro', value: 'financeiro' },
           ],
         },
         {

@@ -65,6 +65,14 @@ export class TeamsService {
         color: 0x45b7d1,
         emoji: '📈',
       },
+      {
+        channelId: this.config.channels.financeiro,
+        roleId: this.config.roles.financeiro,
+        keywords: ['financeiro', 'pagamento', 'cobrança', 'fatura', 'boleto'],
+        name: 'Financeiro',
+        color: 0x95e1d3,
+        emoji: '💰',
+      },
     ];
   }
 

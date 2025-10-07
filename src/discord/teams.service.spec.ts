@@ -11,11 +11,13 @@ describe('TeamsService', () => {
       suporte: '1405162714581438524',
       cs: '1405162746122866798',
       trafego: '1405162779299549234',
+      financeiro: '1424763762249961502',
     },
     roles: {
       suporte: '1405155398247252008',
       cs: '1405155496704475187',
       trafego: '1405155577134579742',
+      financeiro: '1424763921658675323',
     },
   };
 
@@ -57,10 +59,11 @@ describe('TeamsService', () => {
   it('should return teams configuration', () => {
     const teams = service.getTeamsConfig();
 
-    expect(teams).toHaveLength(3);
+    expect(teams).toHaveLength(4);
     expect(teams[0].name).toBe('Suporte Técnico');
     expect(teams[1].name).toBe('Customer Success');
     expect(teams[2].name).toBe('Tráfego Pago');
+    expect(teams[3].name).toBe('Financeiro');
   });
 
   it('should determine team for support ticket', () => {
@@ -111,5 +114,21 @@ describe('TeamsService', () => {
 
     expect(team).toBeDefined();
     expect(team?.name).toBe('Tráfego Pago');
+  });
+
+  it('should determine team for finance ticket', () => {
+    const team = service.determineTeamForTicket('Problema com pagamento');
+
+    expect(team).toBeDefined();
+    expect(team?.name).toBe('Financeiro');
+    expect(team?.keywords).toContain('pagamento');
+  });
+
+  it('should determine team for billing ticket', () => {
+    const team = service.determineTeamForTicket('Dúvida sobre cobrança');
+
+    expect(team).toBeDefined();
+    expect(team?.name).toBe('Financeiro');
+    expect(team?.keywords).toContain('cobrança');
   });
 });

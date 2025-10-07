@@ -113,6 +113,10 @@ export class CorrectionTaggingForm {
         .setCustomId('select_team_trafico')
         .setLabel('📈 Tráfego Pago')
         .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('select_team_financeiro')
+        .setLabel('💰 Financeiro')
+        .setStyle(ButtonStyle.Primary),
     );
   }
 

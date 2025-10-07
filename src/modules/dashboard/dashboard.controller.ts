@@ -389,8 +389,7 @@ export class DashboardController {
   async getStatusDistribution(): Promise<{
     open: number;
     in_progress: number;
-    pending: number;
-    resolved: number;
+    pause: number;
     closed: number;
   }> {
     const metrics = await this.dashboardService.getDashboardMetrics(
@@ -404,8 +403,7 @@ export class DashboardController {
     return {
       open: 0,
       in_progress: 0,
-      pending: 0,
-      resolved: 0,
+      pause: 0,
       closed: 0,
     };
   }
@@ -672,8 +670,7 @@ export class DashboardController {
       byStatus: [
         { status: 'open', count: 0 },
         { status: 'in_progress', count: 0 },
-        { status: 'pending', count: 0 },
-        { status: 'resolved', count: 0 },
+        { status: 'pause', count: 0 },
         { status: 'closed', count: 0 },
       ],
       byPriority: Object.entries(metrics.priorityMetrics).map(

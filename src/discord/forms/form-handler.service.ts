@@ -647,8 +647,8 @@ export class FormHandlerService {
           clientId: discordSession.clientId,
           clientName: discordSession.clientName,
           category: 'general',
-          team: discordSession.team,
-          priority: discordSession.priority,
+          team: discordSession.team || 'suporte',
+          priority: discordSession.priority || 'medium',
           title: formData.title,
           description: formData.description,
         },
@@ -659,8 +659,8 @@ export class FormHandlerService {
         clientName: discordSession.clientName,
         title: formData.title,
         description: formData.description,
-        team: discordSession.team,
-        priority: discordSession.priority,
+        team: discordSession.team || 'Suporte Técnico',
+        priority: discordSession.priority || 'medium',
       });
 
       const confirmButton = GeneralForm.createConfirmationButtons();

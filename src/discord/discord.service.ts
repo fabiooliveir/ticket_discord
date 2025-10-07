@@ -488,6 +488,7 @@ export class DiscordService {
       suporte: 'Suporte Técnico',
       cs: 'Customer Success',
       trafico: 'Tráfego Pago',
+      financeiro: 'Financeiro',
     };
 
     const teamName = teamMapping[teamValue] || teamValue;
@@ -506,6 +507,7 @@ export class DiscordService {
       'Suporte Técnico': 'suporte',
       'Customer Success': 'cs',
       'Tráfego Pago': 'trafico',
+      'Financeiro': 'financeiro',
     };
 
     return nameToKey[team.name] || 'suporte';
@@ -526,9 +528,13 @@ export class DiscordService {
     } else if (customId.startsWith('pull_ticket_')) {
       const ticketId = customId.replace('pull_ticket_', '');
       await this.handlePullTicket(interaction, ticketId);
+    } else if (customId.startsWith('toggle_pause_')) {
+      const ticketId = customId.replace('toggle_pause_', '');
+      await this.handleTogglePause(interaction, ticketId);
     } else if (customId.startsWith('waiting_client_')) {
+      // Compatibilidade com mensagens antigas: tratar como toggle de pausa
       const ticketId = customId.replace('waiting_client_', '');
-      await this.handleTicketStatusChange(interaction, ticketId);
+      await this.handleTogglePause(interaction, ticketId);
     } else if (customId.startsWith('transfer_ticket_')) {
       const ticketId = customId.replace('transfer_ticket_', '');
       await this.handleTransferTicket(interaction, ticketId);
@@ -571,7 +577,7 @@ export class DiscordService {
       // Atribuir ticket ao usuário
       await this.assignTicketToUser(ticketId, interaction.user.id);
 
-      // Atualizar nome da thread para indicar que foi atribuído
+      // Atualizar nome da thread para indicar que foi atribuído (emoji verde ativo)
       if (interaction.channel && interaction.channel.isThread()) {
         const newThreadName = `🟢 🎫 ${ticket.metadata?.clientName || 'Cliente'}`;
         await interaction.channel.setName(newThreadName);
@@ -691,12 +697,14 @@ export class DiscordService {
         );
       }
 
-      // Botões atualizados
-      const waitingClientButton = new ButtonBuilder()
-        .setCustomId(`waiting_client_${ticketId}`)
-        .setLabel('Aguardando cliente')
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji('⏳');
+      // Botões atualizados (toggle pausa)
+      const isPaused =
+        ticket.status === 'pause' || ticket.status === 'waiting_client';
+      const togglePauseButton = new ButtonBuilder()
+        .setCustomId(`toggle_pause_${ticketId}`)
+        .setLabel(isPaused ? 'Retomar' : 'Pausar')
+        .setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Secondary)
+        .setEmoji(isPaused ? '▶️' : '⏸️');
 
       const transferButton = new ButtonBuilder()
         .setCustomId(`transfer_ticket_${ticketId}`)
@@ -711,7 +719,7 @@ export class DiscordService {
         .setEmoji('📁');
 
       const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        waitingClientButton,
+        togglePauseButton,
         transferButton,
         archiveButton,
       );
@@ -809,9 +817,46 @@ export class DiscordService {
         return;
       }
 
-      // Atualizar status do ticket
+      // Mantido para compatibilidade; use handleTogglePause em novos fluxos
+      await this.handleTogglePause(interaction, ticketId);
+    } catch (error) {
+      this.logger.error('Erro ao alterar status do ticket:', error);
+      await interaction.reply({
+        content: '❌ Erro ao alterar status. Tente novamente.',
+        ephemeral: true,
+      });
+    }
+  }
+
+  private async handleTogglePause(interaction: any, ticketId: string) {
+    try {
+      const ticket = await this.ticketRepository.findOne({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        await interaction.reply({
+          content: '❌ Ticket não encontrado!',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      // Apenas o responsável pode alternar pausa
+      if (ticket.assignedTo !== interaction.user.id) {
+        await interaction.reply({
+          content: '❌ Apenas o responsável pelo ticket pode alternar pausa!',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      const isPaused =
+        ticket.status === 'pause' || ticket.status === 'waiting_client';
+      const nextStatus = isPaused ? 'in_progress' : 'pause';
+
       await this.ticketRepository.update(ticketId, {
-        status: 'waiting_client',
+        status: nextStatus,
         metadata: {
           ...ticket.metadata,
           statusChangedAt: new Date().toISOString(),
@@ -819,9 +864,11 @@ export class DiscordService {
         } as Record<string, any>,
       });
 
-      // Atualizar embed da thread
-      const statusEmoji = '⏳';
-      const statusText = '**AGUARDANDO CLIENTE** - Resposta pendente';
+      // Atualizar embed conforme o próximo estado
+      const statusEmoji = isPaused ? '🟢' : '⏸️';
+      const statusText = isPaused
+        ? '**EM ANDAMENTO**'
+        : '**PAUSADO** - Aguardando';
 
       const updatedEmbed = new EmbedBuilder()
         .setTitle(`🎫 Ticket #${ticket.id}`)
@@ -829,32 +876,19 @@ export class DiscordService {
           `**Cliente:** ${ticket.metadata?.clientName || 'N/A'}\n**Categoria:** ${ticket.metadata?.category || 'N/A'}\n**Prioridade:** ${ticket.priority}`,
         )
         .addFields(
-          {
-            name: 'Status',
-            value: `${statusEmoji} ${statusText}`,
-            inline: true,
-          },
-          {
-            name: 'Equipe',
-            value: ticket.metadata?.team || 'N/A',
-            inline: true,
-          },
-          {
-            name: 'Responsável',
-            value: `<@${interaction.user.id}>`,
-            inline: true,
-          },
+          { name: 'Status', value: `${statusEmoji} ${statusText}`, inline: true },
+          { name: 'Equipe', value: ticket.metadata?.team || 'N/A', inline: true },
+          { name: 'Responsável', value: `<@${interaction.user.id}>`, inline: true },
         )
-        .setColor(0xffaa00)
+        .setColor(isPaused ? 0x00ff00 : 0xffaa00)
         .setTimestamp()
         .setFooter({ text: `Status alterado por ${interaction.user.tag}` });
 
-      // Botões atualizados
-      const waitingClientButton = new ButtonBuilder()
-        .setCustomId(`waiting_client_${ticketId}`)
-        .setLabel('Aguardando cliente')
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji('⏳');
+      const togglePauseButton = new ButtonBuilder()
+        .setCustomId(`toggle_pause_${ticketId}`)
+        .setLabel(isPaused ? 'Pausar' : 'Retomar')
+        .setStyle(isPaused ? ButtonStyle.Secondary : ButtonStyle.Success)
+        .setEmoji(isPaused ? '⏸️' : '▶️');
 
       const transferButton = new ButtonBuilder()
         .setCustomId(`transfer_ticket_${ticketId}`)
@@ -869,26 +903,33 @@ export class DiscordService {
         .setEmoji('📁');
 
       const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        waitingClientButton,
+        togglePauseButton,
         transferButton,
         archiveButton,
       );
 
-      await interaction.update({
-        embeds: [updatedEmbed],
-        components: [buttonRow],
-      });
+      await interaction.update({ embeds: [updatedEmbed], components: [buttonRow] });
 
-      // Atualizar nome da thread baseado no status
+      // Atualizar nome da thread baseado no estado (manter emoji verde sempre)
       if (interaction.channel && interaction.channel.isThread()) {
-        const statusEmoji = '⏳';
-        const newThreadName = `${statusEmoji} 🎫 ${ticket.metadata?.clientName || 'Cliente'}`;
-        await interaction.channel.setName(newThreadName);
+        try {
+          const clientNameFromMeta = ticket.metadata?.clientName;
+          // Se por algum motivo o nome do cliente não estiver no metadata, tenta extrair do nome atual da thread
+          const currentName = (interaction.channel as any).name || '';
+          const extractedClientName = currentName.includes('🎫')
+            ? currentName.split('🎫').slice(1).join('🎫').trim()
+            : currentName;
+          const safeClientName = (clientNameFromMeta || extractedClientName || 'Cliente').substring(0, 100);
+          const newThreadName = `🟢 🎫 ${safeClientName}`;
+          await interaction.channel.setName(newThreadName);
+        } catch (renameErr) {
+          this.logger.warn(`Não foi possível renomear a thread: ${String(renameErr)}`);
+        }
       }
     } catch (error) {
-      this.logger.error('Erro ao alterar status do ticket:', error);
+      this.logger.error('Erro ao alternar pausa do ticket:', error);
       await interaction.reply({
-        content: '❌ Erro ao alterar status. Tente novamente.',
+        content: '❌ Erro ao alternar pausa. Tente novamente.',
         ephemeral: true,
       });
     }
@@ -1394,6 +1435,13 @@ export class DiscordService {
           emoji: '📈',
           default: selectedTeam === 'trafico',
         },
+        {
+          label: 'Financeiro',
+          description: 'Equipe financeira',
+          value: 'financeiro',
+          emoji: '💰',
+          default: selectedTeam === 'financeiro',
+        },
       ]);
 
     return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -1832,6 +1880,8 @@ export class DiscordService {
         return 'Customer Success';
       case 'trafico':
         return 'Tráfego Pago';
+      case 'financeiro':
+        return 'Financeiro';
       default:
         return 'Desconhecida';
     }
@@ -1894,7 +1944,7 @@ export class DiscordService {
           {
             name: 'Ações padrão',
             value:
-              '• 👤 **Puxar para mim**: você se torna o responsável pelo ticket.\n• ⏳ **Aguardando cliente**: marca que estamos aguardando resposta do cliente.\n• 📁 **Arquivar**: encerra o ticket e arquiva a thread.',
+              '• 👤 **Puxar para mim**: você se torna o responsável pelo ticket.\n• ⏯️ **Pausar/Retomar**: alterna o estado do ticket entre em andamento e pausado.\n• 📁 **Arquivar**: encerra o ticket e arquiva a thread.',
           },
           {
             name: 'Ações contextuais',
@@ -1921,7 +1971,7 @@ export class DiscordService {
         {
           name: 'Passo a passo',
           value:
-            '1) Use `/criar-ticket` e selecione o cliente pelo autocomplete.\n2) Fale com a equipe na thread do ticket.\n3) Use os botões (👤 Puxar, ⏳ Aguardando cliente, 📁 Arquivar) quando necessário.',
+            '1) Use `/criar-ticket` e selecione o cliente pelo autocomplete.\n2) Fale com a equipe na thread do ticket.\n3) Use os botões (👤 Puxar, ⏯️ Pausar/Retomar, 📁 Arquivar) quando necessário.',
         },
         {
           name: 'Dicas rápidas',
