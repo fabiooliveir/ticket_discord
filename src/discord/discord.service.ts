@@ -613,7 +613,7 @@ export class DiscordService {
 
       // Adicionar campos específicos baseados na categoria
       if (
-        ticket.metadata?.category === 'new-tagging' &&
+        ticket.metadata?.category === 'Novo Tagueamento' &&
         ticket.metadata?.formData
       ) {
         updatedEmbed = updatedEmbed.addFields(
@@ -639,7 +639,7 @@ export class DiscordService {
           },
         );
       } else if (
-        ticket.metadata?.category === 'correction-tagging' &&
+        ticket.metadata?.category === 'Correção de Tagueamento' &&
         ticket.metadata?.formData
       ) {
         updatedEmbed = updatedEmbed.addFields(
