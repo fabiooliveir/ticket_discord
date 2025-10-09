@@ -1068,6 +1068,9 @@ export class DiscordService {
         return;
       }
 
+      // Buscar todos os membros do servidor para garantir que o cache esteja completo
+      await guild.members.fetch();
+
       const role = await guild.roles.fetch(team.roleId);
       if (!role) {
         await interaction.editReply({
