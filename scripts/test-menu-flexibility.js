@@ -67,7 +67,7 @@ async function testMenuFlexibility() {
     console.log('✅ getTeamDisplayName() implementado:');
     console.log('   - suporte → "Suporte Técnico"');
     console.log('   - cs → "Customer Success"');
-    console.log('   - trafico → "Tráfego Pago"');
+    console.log('   - trafego → "Tráfego Pago"');
     
     console.log('✅ getPriorityDisplayName() implementado:');
     console.log('   - high → "🔴 Alta"');

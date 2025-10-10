@@ -58,7 +58,7 @@ export class TicketCategoryService {
           options: [
             { label: 'Suporte Técnico', value: 'suporte' },
             { label: 'Customer Success', value: 'cs' },
-            { label: 'Tráfego Pago', value: 'trafico' },
+            { label: 'Tráfego Pago', value: 'trafego' },
             { label: 'Financeiro', value: 'financeiro' },
           ],
         },
@@ -81,7 +81,7 @@ export class TicketCategoryService {
       id: 'new-tagging',
       name: 'Novo Tagueamento',
       description: 'Tickets para configuração de novos sistemas de tagueamento',
-      team: 'trafico',
+      team: 'trafego',
       priority: 'medium',
       requiresClient: true,
       formFields: [
@@ -121,7 +121,7 @@ export class TicketCategoryService {
           options: [
             { label: 'Suporte Técnico', value: 'suporte' },
             { label: 'Customer Success', value: 'cs' },
-            { label: 'Tráfego Pago', value: 'trafico' },
+            { label: 'Tráfego Pago', value: 'trafego' },
             { label: 'Financeiro', value: 'financeiro' },
           ],
         },
@@ -144,7 +144,7 @@ export class TicketCategoryService {
       id: 'budget-adjustment',
       name: 'Ajuste de Verba',
       description: 'Tickets para solicitação de ajustes de verba em campanhas',
-      team: 'trafico',
+      team: 'trafego',
       priority: 'medium',
       requiresClient: true,
       formFields: [

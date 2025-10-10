@@ -52,7 +52,7 @@ async function testBudgetAdjustmentCategory() {
       categoryId: 'budget-adjustment',
       clientId: 'test-client-123',
       clientName: 'Cliente Teste',
-      team: 'trafico',
+      team: 'trafego',
       priority: 'medium',
       adjustmentReason: 'Necessário aumentar verba devido ao aumento de tráfego',
       requestedAmount: 'R$ 2.500,00',

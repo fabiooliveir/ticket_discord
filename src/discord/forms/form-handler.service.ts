@@ -521,7 +521,7 @@ export class FormHandlerService {
 
       const clientName = discordSession.clientName || 'Cliente';
       const category = discordSession.category || 'budget-adjustment';
-      const team = discordSession.team || 'trafico';
+      const team = discordSession.team || 'trafego';
       const priority = discordSession.priority || 'medium';
 
       const formData: BudgetAdjustmentFormData = {

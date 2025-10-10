@@ -2,7 +2,7 @@ export interface TicketCategory {
   id: string;
   name: string;
   description: string;
-  team: 'suporte' | 'cs' | 'trafico';
+  team: 'suporte' | 'cs' | 'trafego';
   priority: 'low' | 'medium' | 'high';
   requiresClient: boolean;
   formFields: FormField[];

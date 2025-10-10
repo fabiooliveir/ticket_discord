@@ -487,7 +487,7 @@ export class DiscordService {
     const teamMapping = {
       suporte: 'Suporte Técnico',
       cs: 'Customer Success',
-      trafico: 'Tráfego Pago',
+      trafego: 'Tráfego Pago',
       financeiro: 'Financeiro',
     };
 
@@ -506,7 +506,7 @@ export class DiscordService {
     const nameToKey = {
       'Suporte Técnico': 'suporte',
       'Customer Success': 'cs',
-      'Tráfego Pago': 'trafico',
+      'Tráfego Pago': 'trafego',
       'Financeiro': 'financeiro',
     };
 
@@ -1445,9 +1445,9 @@ export class DiscordService {
         {
           label: 'Tráfego Pago',
           description: 'Equipe de tráfego pago',
-          value: 'trafico',
+          value: 'trafego',
           emoji: '📈',
-          default: selectedTeam === 'trafico',
+          default: selectedTeam === 'trafego',
         },
         {
           label: 'Financeiro',
@@ -1892,7 +1892,7 @@ export class DiscordService {
         return 'Suporte Técnico';
       case 'cs':
         return 'Customer Success';
-      case 'trafico':
+      case 'trafego':
         return 'Tráfego Pago';
       case 'financeiro':
         return 'Financeiro';

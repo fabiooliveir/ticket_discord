@@ -110,7 +110,7 @@ export class CorrectionTaggingForm {
         .setLabel('💼 Customer Success')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
-        .setCustomId('select_team_trafico')
+        .setCustomId('select_team_trafego')
         .setLabel('📈 Tráfego Pago')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()

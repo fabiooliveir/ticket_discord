@@ -84,7 +84,7 @@ export class NewTaggingService {
 
     if (
       !formData.team ||
-      !['suporte', 'cs', 'trafico'].includes(formData.team)
+      !['suporte', 'cs', 'trafego'].includes(formData.team)
     ) {
       errors.push('Time responsável é obrigatório');
     }
