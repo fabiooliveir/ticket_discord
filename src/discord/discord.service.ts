@@ -8,6 +8,10 @@ import {
   PermissionFlagsBits,
   StringSelectMenuBuilder,
   ThreadChannel,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ModalActionRowComponentBuilder,
 } from 'discord.js';
 import { Inject } from '@nestjs/common';
 import { DiscordBot } from './discord.bot';
@@ -31,6 +35,7 @@ import {
   SlaCategories,
   TicketPriority,
 } from '../shared/enums/sla-categories.enum';
+import { TaskType } from '../shared/enums/task-type.enum';
 
 @Injectable()
 export class DiscordService {
@@ -71,6 +76,10 @@ export class DiscordService {
         ],
       },
       {
+        name: 'criar-ticket-c7auto',
+        description: 'Cria um novo ticket para C7 Auto',
+      },
+      {
         name: 'ajuda',
         description: 'Como usar os tickets e os botões',
         options: [
@@ -96,6 +105,9 @@ export class DiscordService {
     switch (commandName) {
       case 'criar-ticket':
         await this.handleCreateTicketSlash(interaction, options);
+        break;
+      case 'criar-ticket-c7auto':
+        await this.handleCreateC7AutoTicketSlash(interaction);
         break;
       case 'ajuda':
         await this.handleHelpCommand(interaction, options);
@@ -246,6 +258,87 @@ export class DiscordService {
       await interaction.editReply({
         content: errorMessage,
       });
+    }
+  }
+
+  // Método para lidar com o comando criar-ticket-c7auto
+  private async handleCreateC7AutoTicketSlash(interaction: any) {
+    try {
+      // Verificar se o canal C7 Auto está configurado
+      const c7AutoChannelId = this.config.DISCORD_C7AUTO_CHANNEL_ID;
+      if (!c7AutoChannelId) {
+        await interaction.reply({
+          content: '❌ Canal C7 Auto não configurado. Entre em contato com o administrador.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      // Criar modal para capturar os dados
+      const modal = new ModalBuilder()
+        .setCustomId('c7auto_ticket_modal')
+        .setTitle('Criar Ticket C7 Auto');
+
+      // Campo título
+      const titleInput = new TextInputBuilder()
+        .setCustomId('c7auto_title')
+        .setLabel('Título do Ticket')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Digite um título descritivo para o ticket')
+        .setRequired(true)
+        .setMinLength(3)
+        .setMaxLength(100);
+
+      // Campo nome do cliente
+      const clientNameInput = new TextInputBuilder()
+        .setCustomId('c7auto_client_name')
+        .setLabel('Nome do Cliente')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Digite o nome do cliente da C7 Auto')
+        .setRequired(true)
+        .setMinLength(2)
+        .setMaxLength(100);
+
+      // Campo descrição
+      const descriptionInput = new TextInputBuilder()
+        .setCustomId('c7auto_description')
+        .setLabel('Descrição')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder('Descreva detalhadamente a demanda do cliente')
+        .setRequired(true)
+        .setMinLength(5)
+        .setMaxLength(1000);
+
+      // Adicionar componentes ao modal
+      const titleRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(titleInput);
+      const clientNameRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(clientNameInput);
+      const descriptionRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(descriptionInput);
+
+      modal.addComponents(titleRow, clientNameRow, descriptionRow);
+
+      // Mostrar o modal
+      await interaction.showModal(modal);
+
+      this.logger.log(`Modal C7 Auto exibido para ${interaction.user.tag}`);
+    } catch (error) {
+      this.logger.error('Erro ao exibir modal C7 Auto:', error);
+      
+      let errorMessage = '❌ Erro interno ao criar ticket C7 Auto.';
+      
+      if (error?.code === 50001 || error?.code === 50013) {
+        errorMessage = '❌ Permissões insuficientes para criar ticket C7 Auto.';
+      }
+
+      if (interaction.replied || interaction.deferred) {
+        await interaction.editReply({
+          content: errorMessage,
+        });
+      } else {
+        await interaction.reply({
+          content: errorMessage,
+          ephemeral: true,
+        });
+      }
     }
   }
 
@@ -472,6 +565,175 @@ export class DiscordService {
       } else if (error?.message?.includes('Missing Permissions')) {
         throw new Error(
           'Missing Permissions: Permissões insuficientes para criar thread.',
+        );
+      }
+
+      throw error; // Re-lançar erro original se não for mapeado
+    }
+  }
+
+  // Método para criar thread específica para C7 Auto
+  async createC7AutoThread(
+    ticketData: {
+      id: string;
+      title: string;
+      clientName: string;
+      description: string;
+      author: string;
+      authorId: string;
+    },
+  ): Promise<ThreadChannel | null> {
+    try {
+      const c7AutoChannelId = this.config.DISCORD_C7AUTO_CHANNEL_ID;
+      const suporteRoleId = this.config.SUPORTE_ROLE_ID;
+
+      if (!c7AutoChannelId || !suporteRoleId) {
+        this.logger.error('DISCORD_C7AUTO_CHANNEL_ID ou SUPORTE_ROLE_ID não configurados');
+        return null;
+      }
+
+      const channel = await this.teamsService.discordBot.client.channels.fetch(
+        c7AutoChannelId,
+      );
+
+      if (!channel || !channel.isTextBased()) {
+        this.logger.error(
+          `Canal C7 Auto ${c7AutoChannelId} não encontrado ou não é de texto`,
+        );
+        return null;
+      }
+
+      // Verificar se é um canal de texto ou notícias (que suportam threads)
+      if (
+        channel.type !== ChannelType.GuildText &&
+        channel.type !== ChannelType.GuildNews
+      ) {
+        this.logger.error(`Canal C7 Auto ${c7AutoChannelId} não suporta threads`);
+        return null;
+      }
+
+      // Criar thread com nome do ticket
+      const threadName = `🔴 🎫 ${ticketData.title} — ${ticketData.clientName}`.substring(0, 100);
+
+      let thread: ThreadChannel;
+      try {
+        // Criar thread privada
+        thread = await (channel as any).threads.create({
+          name: threadName,
+          autoArchiveDuration: 10080, // 7 dias (máximo permitido pelo Discord)
+          reason: `Ticket C7 Auto criado por ${ticketData.author}`,
+          type: ChannelType.PrivateThread,
+        });
+      } catch (privateError) {
+        this.logger.warn(`Não foi possível criar thread privada C7 Auto, criando thread pública: ${String(privateError)}`);
+        // Fallback para thread pública se não tiver permissão para thread privada
+        thread = await (channel as any).threads.create({
+          name: threadName,
+          autoArchiveDuration: 10080,
+          reason: `Ticket C7 Auto criado por ${ticketData.author}`,
+        });
+      }
+
+      // Criar embed inicial do ticket C7 Auto
+      const embed = new EmbedBuilder()
+        .setTitle(`🎫 Ticket C7 Auto #${ticketData.id}`)
+        .setDescription(
+          `**Cliente:** ${ticketData.clientName}\n**Título:** ${ticketData.title}`,
+        )
+        .addFields(
+          {
+            name: 'Descrição',
+            value: ticketData.description,
+            inline: false,
+          },
+          {
+            name: 'Status',
+            value: '🔴 **NA FILA** - Aguardando atendimento',
+            inline: true,
+          },
+          { name: 'Equipe', value: 'Suporte', inline: true },
+          { name: 'Responsável', value: 'Aguardando atribuição', inline: true },
+        )
+        .setColor(0xff0000) // Vermelho para fila
+        .setTimestamp()
+        .setFooter({ text: `Criado por ${ticketData.author}` });
+
+      // Botões padrão (mesmos dos demais tickets)
+      const pullButton = new ButtonBuilder()
+        .setCustomId(`pull_ticket_${ticketData.id}`)
+        .setLabel('Puxar para mim')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('👤');
+
+      const transferButton = new ButtonBuilder()
+        .setCustomId(`transfer_ticket_${ticketData.id}`)
+        .setLabel('Transferir')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('🔄');
+
+      const archiveButton = new ButtonBuilder()
+        .setCustomId(`archive_thread_${ticketData.id}`)
+        .setLabel('Arquivar')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('📁');
+
+      const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        pullButton,
+        transferButton,
+        archiveButton,
+      );
+
+      // Configurar permissões da thread privada
+      try {
+        if (thread.type === ChannelType.PrivateThread) {
+          // Adicionar o autor como membro da thread
+          await thread.members.add(ticketData.authorId);
+          this.logger.log(`Autor ${ticketData.authorId} adicionado à thread privada C7 Auto ${thread.id}`);
+
+          // Configurar permissões para a equipe de suporte
+          await (thread as any).permissionOverwrites.create(suporteRoleId, {
+            ViewChannel: true,
+            SendMessages: true,
+            ReadMessageHistory: true,
+          });
+
+          // Negar acesso para @everyone
+          await (thread as any).permissionOverwrites.create(thread.guild.roles.everyone, {
+            ViewChannel: false,
+          });
+
+          this.logger.log(`Permissões configuradas para thread C7 Auto ${thread.id}`);
+        }
+      } catch (permError) {
+        this.logger.warn(`Erro ao configurar permissões da thread C7 Auto: ${String(permError)}`);
+      }
+
+      // Enviar mensagem inicial na thread
+      await thread.send({
+        content: `<@&${suporteRoleId}> - Novo ticket C7 Auto criado!`,
+        embeds: [embed],
+        components: [buttonRow],
+      });
+
+      this.logger.log(`Thread C7 Auto criada: ${thread.name} (${thread.id})`);
+      return thread;
+    } catch (error) {
+      this.logger.error('Erro ao criar thread C7 Auto:', error);
+
+      // Re-lançar erro com mensagem específica para ser capturada pelo handler
+      if (error?.code === 50001 || error?.code === 50013) {
+        throw new Error(
+          'Missing Access: Você não tem permissão para criar threads no canal C7 Auto.',
+        );
+      } else if (error?.code === 10003) {
+        throw new Error(
+          'Canal não encontrado: O canal C7 Auto não existe ou foi removido.',
+        );
+      } else if (error?.message?.includes('Missing Access')) {
+        throw new Error('Missing Access: Acesso negado ao canal C7 Auto.');
+      } else if (error?.message?.includes('Missing Permissions')) {
+        throw new Error(
+          'Missing Permissions: Permissões insuficientes para criar thread C7 Auto.',
         );
       }
 

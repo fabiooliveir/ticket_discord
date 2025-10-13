@@ -48,6 +48,8 @@ export class FormHandlerService {
       await this.handleBudgetAdjustmentModal(interaction);
     } else if (customId.startsWith('general_form_')) {
       await this.handleGeneralModal(interaction);
+    } else if (customId === 'c7auto_ticket_modal') {
+      await this.handleC7AutoTicketModal(interaction);
     } else {
       this.logger.warn(`Modal não reconhecido: ${customId}`);
       await interaction.reply({
@@ -673,6 +675,87 @@ export class FormHandlerService {
       this.logger.error('Erro ao processar formulário geral:', error);
       await interaction.editReply({
         content: '❌ Erro interno ao processar o formulário. Tente novamente.',
+      });
+    }
+  }
+
+  private async handleC7AutoTicketModal(
+    interaction: ModalSubmitInteraction,
+  ): Promise<void> {
+    try {
+      await interaction.deferReply({ ephemeral: true });
+
+      // Extrair dados do formulário
+      const title = interaction.fields.getTextInputValue('c7auto_title');
+      const clientName = interaction.fields.getTextInputValue('c7auto_client_name');
+      const description = interaction.fields.getTextInputValue('c7auto_description');
+
+      // Criar o ticket C7 Auto
+      const ticket = await this.ticketsService.createC7AutoTask(
+        {
+          title,
+          clientName,
+          description,
+        },
+        interaction.user.id,
+        interaction.channelId || undefined,
+        interaction.user.tag,
+      );
+
+      // Criar thread no Discord para C7 Auto
+      let threadInfo = '';
+      try {
+        const thread = await this.discordService.createC7AutoThread({
+          id: ticket.id,
+          title,
+          clientName,
+          description,
+          author: interaction.user.tag,
+          authorId: interaction.user.id,
+        });
+
+        // Atualizar ticket com informações da thread
+        if (thread) {
+          await this.ticketsService.updateTicket(ticket.id, {
+            discordChannelId: thread.id,
+            metadata: {
+              ...ticket.metadata,
+              threadId: thread.id,
+              threadUrl: `https://discord.com/channels/${thread.guildId}/${thread.id}`,
+            },
+          });
+          threadInfo = '\n\nUma thread privada foi criada para este ticket. A equipe de suporte será notificada.';
+        }
+      } catch (error) {
+        this.logger.error(`Erro ao criar thread C7 Auto para ticket ${ticket.id}:`, error);
+        threadInfo = '\n\n⚠️ Ticket criado, mas houve um problema ao criar a thread. Entre em contato com o administrador.';
+      }
+
+      // Resposta de sucesso
+      await interaction.editReply({
+        content: `✅ **Ticket C7 Auto criado com sucesso!**
+
+**ID:** #${ticket.id}
+**Cliente:** ${clientName}
+**Título:** ${title}${threadInfo}`,
+      });
+
+      this.logger.log(
+        `Ticket C7 Auto ${ticket.id} criado via modal por ${interaction.user.tag}`,
+      );
+    } catch (error) {
+      this.logger.error('Erro ao processar modal C7 Auto:', error);
+      
+      let errorMessage = '❌ Erro interno ao criar ticket C7 Auto.';
+      
+      if (error?.message?.includes('Missing Access')) {
+        errorMessage = '❌ Permissões insuficientes para criar ticket C7 Auto.';
+      } else if (error?.message?.includes('Canal não encontrado')) {
+        errorMessage = '❌ Canal C7 Auto não configurado corretamente.';
+      }
+
+      await interaction.editReply({
+        content: errorMessage,
       });
     }
   }

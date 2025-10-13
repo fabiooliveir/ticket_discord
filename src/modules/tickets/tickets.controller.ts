@@ -11,6 +11,7 @@ import {
 import { TicketsService } from './tickets.service';
 import { TicketCategoryService } from './categories/ticket-category.service';
 import { Ticket } from '../../database/entities/ticket.entity';
+import { CreateC7AutoTaskDto } from './dto/create-c7auto-task.dto';
 
 @Controller('tickets')
 export class TicketsController {
@@ -76,5 +77,20 @@ export class TicketsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.ticketsService.deleteTicket(id);
+  }
+
+  @Post('c7-auto')
+  createC7AutoTask(
+    @Body() createC7AutoTaskDto: CreateC7AutoTaskDto,
+    @Body('discordUserId') discordUserId: string,
+    @Body('discordChannelId') discordChannelId?: string,
+    @Body('authorTag') authorTag?: string,
+  ) {
+    return this.ticketsService.createC7AutoTask(
+      createC7AutoTaskDto,
+      discordUserId,
+      discordChannelId,
+      authorTag,
+    );
   }
 }

@@ -12,6 +12,19 @@ export const appConfig = () => ({
     token: process.env.DISCORD_TOKEN,
     guildId: process.env.GUILD_ID,
     clientId: process.env.CLIENT_ID,
+    channels: {
+      suporte: process.env.SUPORTE_CHANNEL_ID,
+      cs: process.env.CS_CHANNEL_ID,
+      trafego: process.env.TRAFEGO_CHANNEL_ID,
+      financeiro: process.env.FINANCEIRO_CHANNEL_ID,
+      c7auto: process.env.DISCORD_C7AUTO_CHANNEL_ID,
+    },
+    roles: {
+      suporte: process.env.SUPORTE_ROLE_ID,
+      cs: process.env.CS_ROLE_ID,
+      trafego: process.env.TRAFEGO_ROLE_ID,
+      financeiro: process.env.FINANCEIRO_ROLE_ID,
+    },
   },
   leadfy: {
     webhookUrl:

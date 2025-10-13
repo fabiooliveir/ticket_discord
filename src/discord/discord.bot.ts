@@ -59,6 +59,12 @@ export class DiscordBot implements OnModuleInit, OnModuleDestroy {
       },
     });
 
+    this.commands.set('criar-ticket-c7auto', {
+      execute: async (interaction) => {
+        await this.discordService.handleSlashCommand(interaction);
+      },
+    });
+
     this.commands.set('ajuda', {
       execute: async (interaction) => {
         await this.discordService.handleSlashCommand(interaction);

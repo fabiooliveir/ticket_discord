@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Ticket } from '../../database/entities/ticket.entity';
 import { LeadfyService } from '../leadfy/leadfy.service';
+import { CreateC7AutoTaskDto } from './dto/create-c7auto-task.dto';
+import { TaskType } from '../../shared/enums/task-type.enum';
 
 @Injectable()
 export class TicketsService {
@@ -129,5 +131,34 @@ export class TicketsService {
   async deleteTicket(id: string): Promise<boolean> {
     const result = await this.ticketRepository.delete(id);
     return (result.affected ?? 0) > 0;
+  }
+
+  async createC7AutoTask(
+    createC7AutoTaskDto: CreateC7AutoTaskDto,
+    discordUserId: string,
+    discordChannelId?: string,
+    authorTag?: string,
+  ): Promise<Ticket> {
+    const ticket = this.ticketRepository.create({
+      title: createC7AutoTaskDto.title,
+      description: createC7AutoTaskDto.description,
+      status: 'open',
+      priority: 'medium',
+      type: TaskType.C7_AUTO,
+      discordUserId,
+      discordChannelId,
+      metadata: {
+        clientName: createC7AutoTaskDto.clientName,
+        createdVia: 'c7_auto_command',
+        authorTag: authorTag || discordUserId,
+      },
+    });
+
+    const savedTicket = await this.ticketRepository.save(ticket);
+    this.logger.log(
+      `Ticket C7 Auto ${savedTicket.id} criado por ${discordUserId}`,
+    );
+
+    return savedTicket;
   }
 }

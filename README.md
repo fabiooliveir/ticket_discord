@@ -105,7 +105,9 @@ npm run start:prod
 - `!ticket close` - Fecha seu ticket aberto
 - `!ticket list` - Lista seus tickets
 - `!ticket help` - Mostra ajuda
-- `/ticket create` - Comando slash para criar ticket
+- `/criar-ticket` - Comando slash para criar ticket (com autocomplete Leadfy)
+- `/criar-ticket-c7auto` - Comando slash específico para tickets C7 Auto
+- `/ajuda` - Mostra ajuda sobre o sistema
 - `/ticket close` - Comando slash para fechar ticket
 - `/ticket list` - Comando slash para listar tickets
 
@@ -150,6 +152,24 @@ MYSQL_PASSWORD=root
 MYSQL_DATABASE=ticket_discord
 PORT=3000
 NODE_ENV=development
+
+# Discord
+DISCORD_TOKEN=seu_token_aqui
+GUILD_ID=id_do_servidor
+CLIENT_ID=id_do_bot
+
+# Equipes e Canais
+SUPORTE_CHANNEL_ID=id_canal_suporte
+CS_CHANNEL_ID=id_canal_cs
+TRAFEGO_CHANNEL_ID=id_canal_trafego
+FINANCEIRO_CHANNEL_ID=id_canal_financeiro
+SUPORTE_ROLE_ID=id_cargo_suporte
+CS_ROLE_ID=id_cargo_cs
+TRAFEGO_ROLE_ID=id_cargo_trafego
+FINANCEIRO_ROLE_ID=id_cargo_financeiro
+
+# C7 Auto - Canal específico para tickets da agência C7 Auto
+DISCORD_C7AUTO_CHANNEL_ID=id_canal_c7auto
 ```
 
 ## 📝 Scripts Disponíveis
@@ -162,6 +182,31 @@ NODE_ENV=development
 - `npm run test:leadfy` - Testa conexão com API Leadfy
 - `npm run migration:run` - Executa migrações
 - `npm run test` - Executa testes
+
+## 🚗 C7 Auto - Fluxo Específico
+
+O sistema inclui um fluxo dedicado para atender a agência C7 Auto, que não está integrada com a Leadfy.
+
+### Características do Fluxo C7 Auto:
+- **Comando específico**: `/criar-ticket-c7auto` (global, sem autocomplete)
+- **Modal personalizado** com 3 campos:
+  - Título do ticket
+  - Nome do cliente (texto livre)
+  - Descrição detalhada
+- **Thread privada** no canal específico (`DISCORD_C7AUTO_CHANNEL_ID`)
+- **Permissões restritas**: apenas equipe de suporte + criador do ticket
+- **Botões padrão**: Puxar, Transferir, Arquivar (mesmos dos demais tickets)
+
+### Configuração:
+1. Configure `DISCORD_C7AUTO_CHANNEL_ID` no `.env`
+2. Execute `npm run setup:discord` para registrar o comando
+3. O comando estará disponível globalmente em todos os servidores
+
+### Uso:
+1. Usuário executa `/criar-ticket-c7auto`
+2. Modal é exibido com os 3 campos
+3. Após submit, ticket é criado e thread é aberta no canal específico
+4. Equipe de suporte recebe notificação automática
 
 ## 🤝 Contribuição
 

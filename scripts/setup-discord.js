@@ -17,6 +17,10 @@ async function setupDiscordCommands() {
       ],
     },
     {
+      name: 'criar-ticket-c7auto',
+      description: 'Cria um novo ticket para C7 Auto',
+    },
+    {
       name: 'ajuda',
       description: 'Como usar os tickets e os botões',
       options: [
