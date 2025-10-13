@@ -860,7 +860,7 @@ export class DiscordService {
           },
           {
             name: 'Equipe',
-            value: ticket.metadata?.team || 'N/A',
+            value: ticket.metadata?.assignedTeam || 'N/A',
             inline: true,
           },
           {
@@ -1031,7 +1031,7 @@ export class DiscordService {
     try {
       // Enviar notificação no canal da equipe
       const team = this.getTeamByName(
-        ticket.metadata?.team || 'Suporte Técnico',
+        ticket.metadata?.assignedTeam || 'Suporte Técnico',
       );
       if (team?.channelId) {
         const channel =
@@ -1140,7 +1140,7 @@ export class DiscordService {
         )
         .addFields(
           { name: 'Status', value: `${statusEmoji} ${statusText}`, inline: true },
-          { name: 'Equipe', value: ticket.metadata?.team || 'N/A', inline: true },
+          { name: 'Equipe', value: ticket.metadata?.assignedTeam || 'N/A', inline: true },
           { name: 'Responsável', value: `<@${interaction.user.id}>`, inline: true },
         )
         .setColor(isPaused ? 0x00ff00 : 0xffaa00)
@@ -1318,7 +1318,7 @@ export class DiscordService {
 
       // Determinar a equipe do ticket
       const team = this.getTeamByName(
-        ticket.metadata?.team || 'Suporte Técnico',
+        ticket.metadata?.assignedTeam || 'Suporte Técnico',
       );
 
       // Buscar membros da equipe
