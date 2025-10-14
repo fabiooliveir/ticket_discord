@@ -500,21 +500,21 @@ export class DiscordService {
             inline: false,
           },
         );
-      } else if (ticketData.category === 'C7 Auto' && ticketData.formData) {
+      } else if (ticketData.category === 'C7 Auto') {
         embed = embed.addFields(
           {
             name: 'Título',
-            value: ticketData.formData.title || 'N/A',
+            value: ticketData.formData?.title || ticketData.title || 'N/A',
             inline: false,
           },
           {
             name: 'Cliente',
-            value: ticketData.formData.clientName || 'N/A',
+            value: ticketData.formData?.clientName || ticketData.clientName || 'N/A',
             inline: false,
           },
           {
             name: 'Descrição',
-            value: ticketData.formData.description || 'N/A',
+            value: ticketData.formData?.description || ticketData.description || 'N/A',
             inline: false,
           },
         );
@@ -976,24 +976,21 @@ export class DiscordService {
             inline: false,
           },
         );
-      } else if (
-        ticket.metadata?.category === 'C7 Auto' &&
-        ticket.metadata?.formData
-      ) {
+      } else if (ticket.metadata?.category === 'C7 Auto') {
         updatedEmbed = updatedEmbed.addFields(
           {
             name: 'Título',
-            value: ticket.metadata.formData.title || 'N/A',
+            value: ticket.metadata.formData?.title || ticket.title || 'N/A',
             inline: false,
           },
           {
             name: 'Cliente',
-            value: ticket.metadata.formData.clientName || 'N/A',
+            value: ticket.metadata.formData?.clientName || ticket.metadata.clientName || 'N/A',
             inline: false,
           },
           {
             name: 'Descrição',
-            value: ticket.metadata.formData.description || 'N/A',
+            value: ticket.metadata.formData?.description || ticket.description || 'N/A',
             inline: false,
           },
         );
