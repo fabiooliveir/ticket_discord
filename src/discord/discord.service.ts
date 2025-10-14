@@ -514,7 +514,7 @@ export class DiscordService {
           },
           {
             name: 'Descrição',
-            value: ticketData.formData?.description || ticketData.description || 'N/A',
+            value: ticketData.formData?.description || 'N/A',
             inline: false,
           },
         );
