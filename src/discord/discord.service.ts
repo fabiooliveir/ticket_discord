@@ -1419,10 +1419,23 @@ export class DiscordService {
         return;
       }
 
-      // Atualizar campo assignedTo no banco
-      await this.ticketRepository.update(ticketId, {
+      // Determinar se precisa atualizar o status (apenas se estiver 'open')
+      const shouldUpdateStatus = ticket.status === 'open';
+
+      // Atualizar ticket com status condicional
+      const updateData: any = {
         assignedTo: selectedUserId,
-      });
+      };
+
+      if (shouldUpdateStatus) {
+        updateData.status = 'assigned';
+        updateData.metadata = {
+          ...ticket.metadata,
+          assignedAt: new Date().toISOString(),
+        };
+      }
+
+      await this.ticketRepository.update(ticketId, updateData);
 
       // Atualizar nome da thread com o novo responsável
       if (interaction.channel && interaction.channel.isThread()) {
