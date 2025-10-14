@@ -500,6 +500,24 @@ export class DiscordService {
             inline: false,
           },
         );
+      } else if (ticketData.category === 'C7 Auto' && ticketData.formData) {
+        embed = embed.addFields(
+          {
+            name: 'Título',
+            value: ticketData.formData.title || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Cliente',
+            value: ticketData.formData.clientName || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Descrição',
+            value: ticketData.formData.description || 'N/A',
+            inline: false,
+          },
+        );
       }
 
       // Botão para puxar ticket
@@ -954,6 +972,27 @@ export class DiscordService {
           },
           {
             name: 'Descrição Detalhada',
+            value: ticket.metadata.formData.description || 'N/A',
+            inline: false,
+          },
+        );
+      } else if (
+        ticket.metadata?.category === 'C7 Auto' &&
+        ticket.metadata?.formData
+      ) {
+        updatedEmbed = updatedEmbed.addFields(
+          {
+            name: 'Título',
+            value: ticket.metadata.formData.title || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Cliente',
+            value: ticket.metadata.formData.clientName || 'N/A',
+            inline: false,
+          },
+          {
+            name: 'Descrição',
             value: ticket.metadata.formData.description || 'N/A',
             inline: false,
           },

@@ -145,12 +145,19 @@ export class TicketsService {
       status: 'open',
       priority: 'medium',
       type: TaskType.C7_AUTO,
+      categoryId: 'c7-auto', // ADICIONAR: categoria padrão
       discordUserId,
       discordChannelId,
       metadata: {
         clientName: createC7AutoTaskDto.clientName,
+        category: 'C7 Auto', // ADICIONAR: nome da categoria para exibição
         createdVia: 'c7_auto_command',
         authorTag: authorTag || discordUserId,
+        formData: { // ADICIONAR: dados do formulário estruturados
+          title: createC7AutoTaskDto.title,
+          clientName: createC7AutoTaskDto.clientName,
+          description: createC7AutoTaskDto.description,
+        },
       },
     });
 

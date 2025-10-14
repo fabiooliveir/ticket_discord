@@ -199,14 +199,49 @@ export class TicketCategoryService {
       ],
     };
 
+    // Categoria: C7 Auto
+    const c7Auto: TicketCategory = {
+      id: 'c7-auto',
+      name: 'C7 Auto',
+      description: 'Tickets específicos para demandas C7 Auto',
+      team: 'suporte',
+      priority: 'medium',
+      requiresClient: false,
+      formFields: [
+        {
+          id: 'title',
+          label: 'Título do Ticket',
+          type: 'text',
+          required: true,
+          placeholder: 'Resumo breve da demanda...',
+        },
+        {
+          id: 'clientName',
+          label: 'Nome do Cliente',
+          type: 'text',
+          required: true,
+          placeholder: 'Nome do cliente...',
+        },
+        {
+          id: 'description',
+          label: 'Descrição Detalhada',
+          type: 'textarea',
+          required: true,
+          placeholder: 'Descreva detalhadamente a demanda...',
+        },
+      ],
+    };
+
     this.categories.set('correction-tagging', correctionTagging);
     this.categories.set('new-tagging', newTagging);
     this.categories.set('budget-adjustment', budgetAdjustment);
     this.categories.set('general', general);
+    this.categories.set('c7-auto', c7Auto);
     this.logger.log(`Categoria 'correction-tagging' inicializada`);
     this.logger.log(`Categoria 'new-tagging' inicializada`);
     this.logger.log(`Categoria 'budget-adjustment' inicializada`);
     this.logger.log(`Categoria 'general' inicializada`);
+    this.logger.log(`Categoria 'c7-auto' inicializada`);
   }
 
   getCategory(categoryId: string): TicketCategory | null {
