@@ -30,6 +30,7 @@ import { BudgetAdjustmentService } from '../modules/tickets/categories/budget-ad
 import { BudgetAdjustmentForm } from '../modules/tickets/categories/budget-adjustment/budget-adjustment.form';
 import { GeneralForm } from '../modules/tickets/categories/general/general.form';
 import { MessageHandlerService } from './message-handler.service';
+import { MessageCaptureService } from './services/message-capture.service';
 import { SlaCalculator } from '../shared/utils/sla-calculator.util';
 import {
   SlaCategories,
@@ -56,6 +57,7 @@ export class DiscordService {
     private readonly newTaggingService: NewTaggingService,
     private readonly budgetAdjustmentService: BudgetAdjustmentService,
     private readonly messageHandlerService: MessageHandlerService,
+    private readonly messageCaptureService: MessageCaptureService,
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
   ) {}
@@ -1282,18 +1284,34 @@ export class DiscordService {
           ticket.priority as TicketPriority,
         );
 
-        // Atualizar status do ticket com SLA de duração
+        // Capturar mensagens da thread antes de arquivar
+        let capturedMessages: any[] = [];
+        try {
+          capturedMessages = await this.messageCaptureService.captureThreadMessages(
+            interaction.channel as any,
+            this.teamsService.discordBot.client.user?.id || '',
+          );
+          this.logger.log(
+            `Capturadas ${capturedMessages.length} mensagens do ticket ${ticketId}`,
+          );
+        } catch (error) {
+          this.logger.error('Erro ao capturar mensagens:', error);
+        }
+
+        // Atualizar status do ticket com SLA de duração E mensagens
         await this.ticketRepository.update(ticketId, {
           status: 'closed', // Mudança: 'closed' em vez de 'archived'
           closedAt: closedAt,
           durationTimeMinutes: durationTimeMinutes,
           durationSlaStatus: durationSlaStatus,
+          messages: capturedMessages,
           metadata: {
             ...ticket.metadata,
             archivedBy: interaction.user.id,
             archivedAt: closedAt.toISOString(),
             durationSlaCalculated: true,
             durationSlaMethod: 'discord_archive',
+            messagesCount: capturedMessages.length,
           } as Record<string, any>,
         });
 

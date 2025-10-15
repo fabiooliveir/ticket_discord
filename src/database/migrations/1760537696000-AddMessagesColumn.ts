@@ -1,36 +1,19 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class AddPhoneToUser1700000000006 implements MigrationInterface {
-  name = 'AddPhoneToUser1700000000006';
-
+export class AddMessagesColumn1760537696000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.addColumn(
-      'users',
+      'tickets',
       new TableColumn({
-        name: 'phone',
-        type: 'varchar',
-        length: '20',
+        name: 'messages',
+        type: 'json',
         isNullable: true,
+        comment: 'Histórico de mensagens do ticket capturadas ao arquivar',
       }),
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropColumn('users', 'phone');
+    await queryRunner.dropColumn('tickets', 'messages');
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

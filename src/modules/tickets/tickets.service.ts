@@ -88,6 +88,28 @@ export class TicketsService {
     const ticket = await this.ticketRepository.findOne({ where: { id } });
     if (!ticket) return null;
 
+    // Se status está mudando para 'closed', capturar mensagens
+    if (
+      updateData.status === 'closed' &&
+      ticket.status !== 'closed' &&
+      ticket.discordChannelId &&
+      !updateData.messages // Evitar captura duplicada
+    ) {
+      try {
+        // Nota: Para capturar mensagens aqui, seria necessário injetar MessageCaptureService
+        // Por enquanto, apenas logamos que seria necessário capturar
+        this.logger.log(
+          `Ticket ${id} mudando para closed - seria necessário capturar mensagens da thread ${ticket.discordChannelId}`,
+        );
+        
+        // TODO: Implementar captura de mensagens aqui se necessário
+        // const messages = await this.messageCaptureService.captureTicketMessagesByThreadId(...)
+        // updateData.messages = messages;
+      } catch (error) {
+        this.logger.error(`Erro ao processar captura de mensagens do ticket ${id}:`, error);
+      }
+    }
+
     Object.assign(ticket, updateData);
     return this.ticketRepository.save(ticket);
   }

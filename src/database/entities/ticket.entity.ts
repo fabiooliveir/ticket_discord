@@ -1,6 +1,7 @@
 import { Entity, Column } from 'typeorm';
 import { BaseEntity } from './base.entity';
 import { TaskType } from '../../shared/enums/task-type.enum';
+import { TicketMessage } from './ticket-message.interface';
 
 @Entity('tickets')
 export class Ticket extends BaseEntity {
@@ -46,6 +47,9 @@ export class Ticket extends BaseEntity {
 
   @Column({ type: 'json', nullable: true })
   categoryData: Record<string, any>;
+
+  @Column({ type: 'json', nullable: true })
+  messages: TicketMessage[];
 
   // Campos para SLA (Service Level Agreement)
   @Column({ type: 'timestamp', nullable: true })
