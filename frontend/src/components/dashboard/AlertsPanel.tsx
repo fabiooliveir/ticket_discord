@@ -12,12 +12,7 @@ import {
   ListItemText,
   useTheme,
 } from '@mui/material';
-import {
-  Warning,
-  Error,
-  Info,
-  NotificationsNone,
-} from '@mui/icons-material';
+import { Warning, Error, Info, NotificationsNone } from '@mui/icons-material';
 import { Alert as AlertType } from '../../types/dashboard';
 
 interface AlertsPanelProps {
@@ -25,7 +20,10 @@ interface AlertsPanelProps {
   loading?: boolean;
 }
 
-const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, loading = false }) => {
+const AlertsPanel: React.FC<AlertsPanelProps> = ({
+  alerts,
+  loading = false,
+}) => {
   const theme = useTheme();
 
   const getAlertIcon = (type: string) => {
@@ -94,9 +92,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, loading = false }) =>
             height: 300,
           }}
         >
-          <Typography color="text.secondary">
-            Carregando alertas...
-          </Typography>
+          <Typography color="text.secondary">Carregando alertas...</Typography>
         </Box>
       </Paper>
     );
@@ -139,12 +135,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, loading = false }) =>
     <Paper sx={{ p: 3, height: 400, overflow: 'auto' }}>
       <Typography variant="h6" gutterBottom>
         Alertas do Sistema
-        <Chip
-          label={alerts.length}
-          color="error"
-          size="small"
-          sx={{ ml: 1 }}
-        />
+        <Chip label={alerts.length} color="error" size="small" sx={{ ml: 1 }} />
       </Typography>
 
       <List sx={{ pt: 0 }}>

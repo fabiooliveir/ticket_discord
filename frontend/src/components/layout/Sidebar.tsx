@@ -110,11 +110,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <Dashboard />
           Menu
         </Typography>
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{ mt: 0.5 }}
-        >
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           Navegação do Dashboard
         </Typography>
       </Box>
@@ -149,9 +145,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             >
               <ListItemIcon
                 sx={{
-                  color: currentPage === item.id 
-                    ? theme.palette.primary.main 
-                    : theme.palette.text.secondary,
+                  color:
+                    currentPage === item.id
+                      ? theme.palette.primary.main
+                      : theme.palette.text.secondary,
                   minWidth: 40,
                 }}
               >

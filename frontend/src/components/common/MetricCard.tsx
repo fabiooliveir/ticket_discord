@@ -7,11 +7,7 @@ import {
   Chip,
   useTheme,
 } from '@mui/material';
-import {
-  TrendingUp,
-  TrendingDown,
-  TrendingFlat,
-} from '@mui/icons-material';
+import { TrendingUp, TrendingDown, TrendingFlat } from '@mui/icons-material';
 import { MetricCardProps } from '../../types/dashboard';
 
 const MetricCard: React.FC<MetricCardProps> = ({

@@ -104,13 +104,43 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <Router>
-          <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
+          <Box
+            sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}
+          >
             <Routes>
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-              <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-              <Route path="/account" element={<PrivateRoute><AccountPage /></PrivateRoute>} />
-              <Route path="*" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+              <Route
+                path="/"
+                element={
+                  <PrivateRoute>
+                    <DashboardPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <PrivateRoute>
+                    <DashboardPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/account"
+                element={
+                  <PrivateRoute>
+                    <AccountPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="*"
+                element={
+                  <PrivateRoute>
+                    <DashboardPage />
+                  </PrivateRoute>
+                }
+              />
             </Routes>
           </Box>
         </Router>

@@ -41,14 +41,15 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ user, onUserUpdate }) => {
     });
   }, [user]);
 
-  const handleInputChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: event.target.value,
-    }));
-    setError(null);
-    setSuccess(false);
-  };
+  const handleInputChange =
+    (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData((prev) => ({
+        ...prev,
+        [field]: event.target.value,
+      }));
+      setError(null);
+      setSuccess(false);
+    };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -67,7 +68,8 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ user, onUserUpdate }) => {
     }
   };
 
-  const hasChanges = formData.email !== user.email || formData.phone !== user.phone;
+  const hasChanges =
+    formData.email !== user.email || formData.phone !== user.phone;
 
   return (
     <Card>
@@ -75,13 +77,13 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ user, onUserUpdate }) => {
         <Typography variant="h6" gutterBottom>
           Informações do Perfil
         </Typography>
-        
+
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
-        
+
         {success && (
           <Alert severity="success" sx={{ mb: 2 }}>
             Perfil atualizado com sucesso!
@@ -134,18 +136,3 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ user, onUserUpdate }) => {
 };
 
 export default ProfileForm;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -101,12 +101,15 @@ export class TicketsService {
         this.logger.log(
           `Ticket ${id} mudando para closed - seria necessário capturar mensagens da thread ${ticket.discordChannelId}`,
         );
-        
+
         // TODO: Implementar captura de mensagens aqui se necessário
         // const messages = await this.messageCaptureService.captureTicketMessagesByThreadId(...)
         // updateData.messages = messages;
       } catch (error) {
-        this.logger.error(`Erro ao processar captura de mensagens do ticket ${id}:`, error);
+        this.logger.error(
+          `Erro ao processar captura de mensagens do ticket ${id}:`,
+          error,
+        );
       }
     }
 
@@ -175,7 +178,8 @@ export class TicketsService {
         category: 'C7 Auto', // ADICIONAR: nome da categoria para exibição
         createdVia: 'c7_auto_command',
         authorTag: authorTag || discordUserId,
-        formData: { // ADICIONAR: dados do formulário estruturados
+        formData: {
+          // ADICIONAR: dados do formulário estruturados
           title: createC7AutoTaskDto.title,
           clientName: createC7AutoTaskDto.clientName,
           description: createC7AutoTaskDto.description,

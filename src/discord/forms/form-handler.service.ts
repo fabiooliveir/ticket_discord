@@ -687,8 +687,10 @@ export class FormHandlerService {
 
       // Extrair dados do formulário
       const title = interaction.fields.getTextInputValue('c7auto_title');
-      const clientName = interaction.fields.getTextInputValue('c7auto_client_name');
-      const description = interaction.fields.getTextInputValue('c7auto_description');
+      const clientName =
+        interaction.fields.getTextInputValue('c7auto_client_name');
+      const description =
+        interaction.fields.getTextInputValue('c7auto_description');
 
       // Criar o ticket C7 Auto
       const ticket = await this.ticketsService.createC7AutoTask(
@@ -724,11 +726,16 @@ export class FormHandlerService {
               threadUrl: `https://discord.com/channels/${thread.guildId}/${thread.id}`,
             },
           });
-          threadInfo = '\n\nUma thread privada foi criada para este ticket. A equipe de suporte será notificada.';
+          threadInfo =
+            '\n\nUma thread privada foi criada para este ticket. A equipe de suporte será notificada.';
         }
       } catch (error) {
-        this.logger.error(`Erro ao criar thread C7 Auto para ticket ${ticket.id}:`, error);
-        threadInfo = '\n\n⚠️ Ticket criado, mas houve um problema ao criar a thread. Entre em contato com o administrador.';
+        this.logger.error(
+          `Erro ao criar thread C7 Auto para ticket ${ticket.id}:`,
+          error,
+        );
+        threadInfo =
+          '\n\n⚠️ Ticket criado, mas houve um problema ao criar a thread. Entre em contato com o administrador.';
       }
 
       // Resposta de sucesso
@@ -745,9 +752,9 @@ export class FormHandlerService {
       );
     } catch (error) {
       this.logger.error('Erro ao processar modal C7 Auto:', error);
-      
+
       let errorMessage = '❌ Erro interno ao criar ticket C7 Auto.';
-      
+
       if (error?.message?.includes('Missing Access')) {
         errorMessage = '❌ Permissões insuficientes para criar ticket C7 Auto.';
       } else if (error?.message?.includes('Canal não encontrado')) {

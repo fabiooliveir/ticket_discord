@@ -54,7 +54,7 @@ export class MessageCaptureService {
         lastMessageId = fetchedMessages.last()?.id;
 
         // Pequena pausa para evitar rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       // Ordenar por timestamp (mais antigas primeiro)
@@ -81,15 +81,20 @@ export class MessageCaptureService {
   ): Promise<TicketMessage[]> {
     try {
       const thread = await client.channels.fetch(threadId);
-      
+
       if (!thread || !thread.isThread()) {
-        this.logger.warn(`Thread ${threadId} não encontrada ou não é uma thread válida`);
+        this.logger.warn(
+          `Thread ${threadId} não encontrada ou não é uma thread válida`,
+        );
         return [];
       }
 
       return this.captureThreadMessages(thread as ThreadChannel, botUserId);
     } catch (error) {
-      this.logger.error(`Erro ao capturar mensagens da thread ${threadId}:`, error);
+      this.logger.error(
+        `Erro ao capturar mensagens da thread ${threadId}:`,
+        error,
+      );
       return [];
     }
   }

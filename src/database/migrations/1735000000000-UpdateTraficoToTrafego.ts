@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class UpdateTraficoToTrafego1735000000000
-  implements MigrationInterface
-{
+export class UpdateTraficoToTrafego1735000000000 implements MigrationInterface {
   name = 'UpdateTraficoToTrafego1735000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -23,10 +21,3 @@ export class UpdateTraficoToTrafego1735000000000
     `);
   }
 }
-
-
-
-
-
-
-

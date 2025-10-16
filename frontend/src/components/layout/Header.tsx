@@ -46,9 +46,9 @@ const Header: React.FC<HeaderProps> = ({
   const healthStatus = getHealthStatus();
 
   return (
-    <AppBar 
-      position="sticky" 
-      sx={{ 
+    <AppBar
+      position="sticky"
+      sx={{
         backgroundColor: theme.palette.background.paper,
         borderBottom: `1px solid ${theme.palette.divider}`,
         boxShadow: theme.shadows[1],
@@ -56,11 +56,11 @@ const Header: React.FC<HeaderProps> = ({
     >
       <Toolbar>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Dashboard 
-            sx={{ 
+          <Dashboard
+            sx={{
               color: theme.palette.primary.main,
               fontSize: 32,
-            }} 
+            }}
           />
           <Typography
             variant="h6"
@@ -119,11 +119,7 @@ const Header: React.FC<HeaderProps> = ({
               color: theme.palette.text.primary,
             }}
           >
-            <Badge 
-              badgeContent={notificationCount} 
-              color="error"
-              max={99}
-            >
+            <Badge badgeContent={notificationCount} color="error" max={99}>
               <Notifications />
             </Badge>
           </IconButton>

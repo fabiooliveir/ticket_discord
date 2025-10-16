@@ -1,9 +1,5 @@
 import React from 'react';
-import {
-  Grid,
-  Box,
-  useTheme,
-} from '@mui/material';
+import { Grid, Box, useTheme } from '@mui/material';
 import {
   Assignment,
   AssignmentTurnedIn,
@@ -24,7 +20,10 @@ interface OverviewCardsProps {
   loading?: boolean;
 }
 
-const OverviewCards: React.FC<OverviewCardsProps> = ({ data, loading = false }) => {
+const OverviewCards: React.FC<OverviewCardsProps> = ({
+  data,
+  loading = false,
+}) => {
   const theme = useTheme();
 
   if (loading) {
@@ -63,7 +62,7 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({ data, loading = false }) 
     // Simulação de cálculo de tendência baseado em dados históricos
     const currentRate = summary.complianceRate;
     const previousRate = Math.max(0, currentRate - 5); // Simulação
-    
+
     if (currentRate > previousRate) {
       return {
         value: Math.round(((currentRate - previousRate) / previousRate) * 100),
@@ -75,7 +74,7 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({ data, loading = false }) 
         isPositive: false,
       };
     }
-    
+
     return {
       value: 0,
       isPositive: true,
@@ -85,17 +84,19 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({ data, loading = false }) 
   const formatTime = (minutes: number): string => {
     if (minutes === 0) return '0 min';
     if (minutes < 60) return `${minutes} min`;
-    
+
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
-    
+
     if (hours < 24) {
-      return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}min` : `${hours}h`;
+      return remainingMinutes > 0
+        ? `${hours}h ${remainingMinutes}min`
+        : `${hours}h`;
     }
-    
+
     const days = Math.floor(hours / 24);
     const remainingHours = hours % 24;
-    
+
     return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
   };
 
@@ -141,7 +142,13 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({ data, loading = false }) 
           value={`${summary.complianceRate}%`}
           subtitle="SLA em dia"
           trend={calculateComplianceTrend()}
-          color={summary.complianceRate >= 90 ? 'success' : summary.complianceRate >= 70 ? 'warning' : 'error'}
+          color={
+            summary.complianceRate >= 90
+              ? 'success'
+              : summary.complianceRate >= 70
+                ? 'warning'
+                : 'error'
+          }
           icon={<TrendingUp />}
         />
       </Grid>
@@ -162,14 +169,16 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({ data, loading = false }) 
         <MetricCard
           title="Violações SLA"
           value={summary.slaBreaches}
-          subtitle={summary.slaBreaches === 0 ? 'Nenhuma violação' : 'Requer atenção'}
+          subtitle={
+            summary.slaBreaches === 0 ? 'Nenhuma violação' : 'Requer atenção'
+          }
           color={summary.slaBreaches === 0 ? 'success' : 'error'}
           icon={<Warning />}
         />
       </Grid>
 
       {/* Fase 3: Cards de SLA de Duração */}
-      
+
       {/* Duração Média Total */}
       <Grid item xs={12} sm={6} md={4}>
         <MetricCard
@@ -187,7 +196,13 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({ data, loading = false }) 
           title="Compliance de Duração"
           value={`${summary.durationSla.durationComplianceRate}%`}
           subtitle="SLA de duração em dia"
-          color={summary.durationSla.durationComplianceRate >= 90 ? 'success' : summary.durationSla.durationComplianceRate >= 70 ? 'warning' : 'error'}
+          color={
+            summary.durationSla.durationComplianceRate >= 90
+              ? 'success'
+              : summary.durationSla.durationComplianceRate >= 70
+                ? 'warning'
+                : 'error'
+          }
           icon={<Timer />}
         />
       </Grid>
@@ -208,7 +223,11 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({ data, loading = false }) 
         <MetricCard
           title="Violações de Duração"
           value={summary.durationSla.slaBreaches}
-          subtitle={summary.durationSla.slaBreaches === 0 ? 'Nenhuma violação' : 'Requer atenção'}
+          subtitle={
+            summary.durationSla.slaBreaches === 0
+              ? 'Nenhuma violação'
+              : 'Requer atenção'
+          }
           color={summary.durationSla.slaBreaches === 0 ? 'success' : 'error'}
           icon={<Assessment />}
         />

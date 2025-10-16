@@ -17,10 +17,10 @@ export class Ticket extends BaseEntity {
   @Column({ type: 'varchar', length: 100 })
   priority: string;
 
-  @Column({ 
-    type: 'enum', 
-    enum: TaskType, 
-    default: TaskType.LEADFY 
+  @Column({
+    type: 'enum',
+    enum: TaskType,
+    default: TaskType.LEADFY,
   })
   type: TaskType;
 

@@ -9,7 +9,10 @@ import {
   CircularProgress,
   Alert,
 } from '@mui/material';
-import { Person as PersonIcon, Security as SecurityIcon } from '@mui/icons-material';
+import {
+  Person as PersonIcon,
+  Security as SecurityIcon,
+} from '@mui/icons-material';
 import ProfileForm from '../components/account/ProfileForm';
 import ChangePasswordForm from '../components/account/ChangePasswordForm';
 import apiService from '../services/api';
@@ -63,7 +66,9 @@ const AccountPage: React.FC = () => {
       const userData = await apiService.getCurrentUser();
       setUser(userData);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao carregar dados do usuário');
+      setError(
+        err.response?.data?.message || 'Erro ao carregar dados do usuário',
+      );
     } finally {
       setLoading(false);
     }
@@ -89,7 +94,12 @@ const AccountPage: React.FC = () => {
   if (loading) {
     return (
       <Container maxWidth="md" sx={{ mt: 4 }}>
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          minHeight="400px"
+        >
           <CircularProgress />
         </Box>
       </Container>
@@ -111,14 +121,18 @@ const AccountPage: React.FC = () => {
       <Typography variant="h4" component="h1" gutterBottom>
         Configurações da Conta
       </Typography>
-      
+
       <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
         Gerencie suas informações pessoais e configurações de segurança
       </Typography>
 
       <Paper sx={{ width: '100%' }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange} aria-label="abas de configurações">
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            aria-label="abas de configurações"
+          >
             <Tab
               icon={<PersonIcon />}
               label="Perfil"
@@ -149,18 +163,3 @@ const AccountPage: React.FC = () => {
 };
 
 export default AccountPage;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

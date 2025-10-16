@@ -113,15 +113,15 @@ const ChartsSection: React.FC<ChartsSectionProps> = ({ period = 'month' }) => {
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={timelineData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="date" 
+              <XAxis
+                dataKey="date"
                 tick={{ fontSize: 12 }}
                 angle={-45}
                 textAnchor="end"
                 height={60}
               />
               <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip 
+              <Tooltip
                 formatter={formatTooltipValue}
                 labelStyle={{ color: theme.palette.text.primary }}
               />
@@ -153,14 +153,21 @@ const ChartsSection: React.FC<ChartsSectionProps> = ({ period = 'month' }) => {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent }) =>
+                  `${name} ${(percent * 100).toFixed(0)}%`
+                }
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
               >
-                {(distributionData.byPriority || []).map((entry: any, index: number) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
+                {(distributionData.byPriority || []).map(
+                  (entry: any, index: number) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ),
+                )}
               </Pie>
               <Tooltip />
             </PieChart>
@@ -177,15 +184,15 @@ const ChartsSection: React.FC<ChartsSectionProps> = ({ period = 'month' }) => {
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={timelineData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="date" 
+              <XAxis
+                dataKey="date"
                 tick={{ fontSize: 12 }}
                 angle={-45}
                 textAnchor="end"
                 height={60}
               />
               <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
-              <Tooltip 
+              <Tooltip
                 formatter={(value: any) => [`${value}%`, 'Taxa de Compliance']}
                 labelStyle={{ color: theme.palette.text.primary }}
               />
@@ -211,8 +218,8 @@ const ChartsSection: React.FC<ChartsSectionProps> = ({ period = 'month' }) => {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={distributionData.byStatus || []}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="name" 
+              <XAxis
+                dataKey="name"
                 tick={{ fontSize: 12 }}
                 angle={-45}
                 textAnchor="end"
@@ -235,13 +242,13 @@ const ChartsSection: React.FC<ChartsSectionProps> = ({ period = 'month' }) => {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={distributionData.hourly || []}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="hour" 
+              <XAxis
+                dataKey="hour"
                 tick={{ fontSize: 12 }}
                 tickFormatter={(value) => `${value}h`}
               />
               <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip 
+              <Tooltip
                 formatter={(value: any) => [`${value} tickets`, 'Tickets']}
                 labelFormatter={(label) => `${label}h`}
               />

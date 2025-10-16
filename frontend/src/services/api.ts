@@ -45,7 +45,7 @@ class ApiService {
         }
         console.error('API Error:', error.response?.data || error.message);
         return Promise.reject(error);
-      }
+      },
     );
   }
 
@@ -81,12 +81,14 @@ class ApiService {
   // Dashboard Metrics
   async getDashboardMetrics(filters?: DateFilter): Promise<DashboardMetrics> {
     const params = new URLSearchParams();
-    
+
     if (filters?.startDate) params.append('startDate', filters.startDate);
     if (filters?.endDate) params.append('endDate', filters.endDate);
     if (filters?.period) params.append('period', filters.period);
 
-    const response = await this.api.get(`/dashboard/metrics?${params.toString()}`);
+    const response = await this.api.get(
+      `/dashboard/metrics?${params.toString()}`,
+    );
     return response.data;
   }
 
@@ -118,11 +120,13 @@ class ApiService {
   // Performance Reports
   async getPerformanceReport(filters?: DateFilter): Promise<PerformanceReport> {
     const params = new URLSearchParams();
-    
+
     if (filters?.startDate) params.append('startDate', filters.startDate);
     if (filters?.endDate) params.append('endDate', filters.endDate);
 
-    const response = await this.api.get(`/dashboard/performance?${params.toString()}`);
+    const response = await this.api.get(
+      `/dashboard/performance?${params.toString()}`,
+    );
     return response.data;
   }
 
@@ -186,7 +190,9 @@ class ApiService {
     ticketsClosed: ChartDataPoint[];
     complianceRate: ChartDataPoint[];
   }> {
-    const response = await this.api.get(`/dashboard/charts/timeline?days=${days}`);
+    const response = await this.api.get(
+      `/dashboard/charts/timeline?days=${days}`,
+    );
     return response.data;
   }
 
@@ -216,12 +222,18 @@ class ApiService {
     return response.data;
   }
 
-  async updateMyProfile(data: { email?: string; phone?: string }): Promise<any> {
+  async updateMyProfile(data: {
+    email?: string;
+    phone?: string;
+  }): Promise<any> {
     const response = await this.api.patch('/users/me', data);
     return response.data;
   }
 
-  async changeMyPassword(data: { currentPassword: string; newPassword: string }): Promise<any> {
+  async changeMyPassword(data: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<any> {
     const response = await this.api.patch('/users/me/password', data);
     return response.data;
   }

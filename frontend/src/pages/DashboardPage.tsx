@@ -8,10 +8,7 @@ import {
   Fab,
   useTheme,
 } from '@mui/material';
-import {
-  Refresh,
-  Menu,
-} from '@mui/icons-material';
+import { Refresh, Menu } from '@mui/icons-material';
 import Header from '../components/layout/Header';
 import Sidebar from '../components/layout/Sidebar';
 import OverviewCards from '../components/dashboard/OverviewCards';
@@ -22,7 +19,11 @@ import QuickCharts from '../components/dashboard/QuickCharts';
 import PerformanceTable from '../components/dashboard/PerformanceTable';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorBoundary from '../components/common/ErrorBoundary';
-import { useDashboardOverview, useAlerts, useAgentPerformance } from '../hooks/useDashboard';
+import {
+  useDashboardOverview,
+  useAlerts,
+  useAgentPerformance,
+} from '../hooks/useDashboard';
 
 const DashboardPage: React.FC = () => {
   const theme = useTheme();
@@ -31,33 +32,29 @@ const DashboardPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Hooks para dados
-  const { 
-    data: overviewData, 
-    loading: overviewLoading, 
-    error: overviewError, 
-    refetch: refetchOverview 
+  const {
+    data: overviewData,
+    loading: overviewLoading,
+    error: overviewError,
+    refetch: refetchOverview,
   } = useDashboardOverview();
 
-  const { 
-    data: alertsData, 
-    loading: alertsLoading, 
-    refetch: refetchAlerts 
+  const {
+    data: alertsData,
+    loading: alertsLoading,
+    refetch: refetchAlerts,
   } = useAlerts();
 
-  const { 
-    data: agentData, 
-    loading: agentLoading, 
-    refetch: refetchAgents 
+  const {
+    data: agentData,
+    loading: agentLoading,
+    refetch: refetchAgents,
   } = useAgentPerformance();
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([
-        refetchOverview(),
-        refetchAlerts(),
-        refetchAgents(),
-      ]);
+      await Promise.all([refetchOverview(), refetchAlerts(), refetchAgents()]);
     } catch (error) {
       console.error('Erro ao atualizar dados:', error);
     } finally {
@@ -90,19 +87,16 @@ const DashboardPage: React.FC = () => {
             {/* Cards de Overview */}
             <Grid item xs={12}>
               <ErrorBoundary>
-                <OverviewCards 
-                  data={overviewData!} 
-                  loading={overviewLoading} 
-                />
+                <OverviewCards data={overviewData!} loading={overviewLoading} />
               </ErrorBoundary>
             </Grid>
 
             {/* Seção de SLA de Duração */}
             <Grid item xs={12}>
               <ErrorBoundary>
-                <DurationSlaSection 
-                  data={overviewData!} 
-                  loading={overviewLoading} 
+                <DurationSlaSection
+                  data={overviewData!}
+                  loading={overviewLoading}
                 />
               </ErrorBoundary>
             </Grid>
@@ -110,9 +104,9 @@ const DashboardPage: React.FC = () => {
             {/* Alertas */}
             <Grid item xs={12} md={6}>
               <ErrorBoundary>
-                <AlertsPanel 
-                  alerts={alertsData || []} 
-                  loading={alertsLoading} 
+                <AlertsPanel
+                  alerts={alertsData || []}
+                  loading={alertsLoading}
                 />
               </ErrorBoundary>
             </Grid>
@@ -120,7 +114,14 @@ const DashboardPage: React.FC = () => {
             {/* Gráficos */}
             <Grid item xs={12} md={6}>
               <ErrorBoundary>
-                <Paper sx={{ p: 3, height: 400, display: 'flex', flexDirection: 'column' }}>
+                <Paper
+                  sx={{
+                    p: 3,
+                    height: 400,
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
                   <Typography variant="h6" gutterBottom>
                     Gráficos Rápidos
                   </Typography>
@@ -152,9 +153,9 @@ const DashboardPage: React.FC = () => {
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <ErrorBoundary>
-                <PerformanceTable 
-                  data={agentData || []} 
-                  loading={agentLoading} 
+                <PerformanceTable
+                  data={agentData || []}
+                  loading={agentLoading}
                 />
               </ErrorBoundary>
             </Grid>
@@ -170,9 +171,9 @@ const DashboardPage: React.FC = () => {
                   Gestão de Agentes
                 </Typography>
                 <ErrorBoundary>
-                  <PerformanceTable 
-                    data={agentData || []} 
-                    loading={agentLoading} 
+                  <PerformanceTable
+                    data={agentData || []}
+                    loading={agentLoading}
                   />
                 </ErrorBoundary>
               </Paper>
@@ -185,9 +186,9 @@ const DashboardPage: React.FC = () => {
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <ErrorBoundary>
-                <AlertsPanel 
-                  alerts={alertsData || []} 
-                  loading={alertsLoading} 
+                <AlertsPanel
+                  alerts={alertsData || []}
+                  loading={alertsLoading}
                 />
               </ErrorBoundary>
             </Grid>

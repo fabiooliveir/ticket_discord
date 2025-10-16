@@ -179,7 +179,7 @@ export const useAlerts = () => {
 
   useEffect(() => {
     fetchData();
-    
+
     // Atualizar alertas a cada 30 segundos
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
@@ -190,9 +190,15 @@ export const useAlerts = () => {
 
 // Hook para Distribuições
 export const useDistributions = () => {
-  const [statusDistribution, setStatusDistribution] = useState<Record<string, number>>({});
-  const [priorityDistribution, setPriorityDistribution] = useState<Record<string, number>>({});
-  const [categoryDistribution, setCategoryDistribution] = useState<Record<string, number>>({});
+  const [statusDistribution, setStatusDistribution] = useState<
+    Record<string, number>
+  >({});
+  const [priorityDistribution, setPriorityDistribution] = useState<
+    Record<string, number>
+  >({});
+  const [categoryDistribution, setCategoryDistribution] = useState<
+    Record<string, number>
+  >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -276,7 +282,7 @@ export const useHealthCheck = () => {
 
   useEffect(() => {
     checkHealth();
-    
+
     // Verificar saúde a cada 60 segundos
     const interval = setInterval(checkHealth, 60000);
     return () => clearInterval(interval);

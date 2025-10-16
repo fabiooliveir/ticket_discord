@@ -65,13 +65,23 @@ export class UsersService {
   }
 
   async findOne(id: number): Promise<User> {
-    console.log('🔍 UsersService.findOne called with id:', id, 'type:', typeof id);
-    
+    console.log(
+      '🔍 UsersService.findOne called with id:',
+      id,
+      'type:',
+      typeof id,
+    );
+
     if (isNaN(id) || id <= 0) {
-      console.error('❌ UsersService.findOne - ID inválido:', id, 'isNaN:', isNaN(id));
+      console.error(
+        '❌ UsersService.findOne - ID inválido:',
+        id,
+        'isNaN:',
+        isNaN(id),
+      );
       throw new UnauthorizedException('ID de usuário inválido');
     }
-    
+
     const user = await this.usersRepository.findOne({
       where: { id },
       select: [
@@ -155,16 +165,26 @@ export class UsersService {
 
   async getMe(id: number): Promise<User> {
     try {
-      console.log('🔍 UsersService.getMe called with id:', id, 'type:', typeof id);
-      
+      console.log(
+        '🔍 UsersService.getMe called with id:',
+        id,
+        'type:',
+        typeof id,
+      );
+
       // Validar se o ID é um número válido
       if (isNaN(id) || id <= 0) {
-        console.error('❌ UsersService.getMe - ID inválido:', id, 'isNaN:', isNaN(id));
+        console.error(
+          '❌ UsersService.getMe - ID inválido:',
+          id,
+          'isNaN:',
+          isNaN(id),
+        );
         throw new UnauthorizedException('ID de usuário inválido');
       }
-      
+
       console.log('🔍 UsersService.getMe - Querying database with id:', id);
-      
+
       const user = await this.usersRepository.findOne({
         where: { id },
         select: [
@@ -192,8 +212,16 @@ export class UsersService {
     }
   }
 
-  async updateMe(id: number, updateProfileDto: UpdateProfileDto): Promise<User> {
-    console.log('🔍 UsersService.updateMe called with id:', id, 'type:', typeof id);
+  async updateMe(
+    id: number,
+    updateProfileDto: UpdateProfileDto,
+  ): Promise<User> {
+    console.log(
+      '🔍 UsersService.updateMe called with id:',
+      id,
+      'type:',
+      typeof id,
+    );
     const user = await this.findOne(id);
 
     // Verificar se email já existe (se estiver sendo alterado)
@@ -220,14 +248,27 @@ export class UsersService {
     return this.getMe(id);
   }
 
-  async changePassword(id: number, changePasswordDto: ChangePasswordDto): Promise<void> {
-    console.log('🔍 UsersService.changePassword called with id:', id, 'type:', typeof id);
-    
+  async changePassword(
+    id: number,
+    changePasswordDto: ChangePasswordDto,
+  ): Promise<void> {
+    console.log(
+      '🔍 UsersService.changePassword called with id:',
+      id,
+      'type:',
+      typeof id,
+    );
+
     if (isNaN(id) || id <= 0) {
-      console.error('❌ UsersService.changePassword - ID inválido:', id, 'isNaN:', isNaN(id));
+      console.error(
+        '❌ UsersService.changePassword - ID inválido:',
+        id,
+        'isNaN:',
+        isNaN(id),
+      );
       throw new UnauthorizedException('ID de usuário inválido');
     }
-    
+
     const user = await this.usersRepository.findOne({
       where: { id },
     });

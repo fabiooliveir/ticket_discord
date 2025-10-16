@@ -64,41 +64,62 @@ export class UsersController {
   @Get('me')
   getMe(@CurrentUser() user: any) {
     console.log('getMe controller called with user:', user);
-    console.log('user.userId type:', typeof user?.userId, 'value:', user?.userId);
-    
+    console.log(
+      'user.userId type:',
+      typeof user?.userId,
+      'value:',
+      user?.userId,
+    );
+
     if (!user || user.userId === null || user.userId === undefined) {
       console.error('❌ Invalid user object in getMe:', user);
       throw new HttpException('Usuário inválido', HttpStatus.UNAUTHORIZED);
     }
-    
+
     return this.usersService.getMe(user.userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('me')
-  updateMe(@CurrentUser() user: any, @Body() updateProfileDto: UpdateProfileDto) {
+  updateMe(
+    @CurrentUser() user: any,
+    @Body() updateProfileDto: UpdateProfileDto,
+  ) {
     console.log('updateMe controller called with user:', user);
-    console.log('user.userId type:', typeof user?.userId, 'value:', user?.userId);
-    
+    console.log(
+      'user.userId type:',
+      typeof user?.userId,
+      'value:',
+      user?.userId,
+    );
+
     if (!user || user.userId === null || user.userId === undefined) {
       console.error('❌ Invalid user object in updateMe:', user);
       throw new HttpException('Usuário inválido', HttpStatus.UNAUTHORIZED);
     }
-    
+
     return this.usersService.updateMe(user.userId, updateProfileDto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('me/password')
-  changePassword(@CurrentUser() user: any, @Body() changePasswordDto: ChangePasswordDto) {
+  changePassword(
+    @CurrentUser() user: any,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
     console.log('changePassword controller called with user:', user);
-    console.log('user.userId type:', typeof user?.userId, 'value:', user?.userId);
-    
+    console.log(
+      'user.userId type:',
+      typeof user?.userId,
+      'value:',
+      user?.userId,
+    );
+
     if (!user || user.userId === null || user.userId === undefined) {
       console.error('❌ Invalid user object in changePassword:', user);
       throw new HttpException('Usuário inválido', HttpStatus.UNAUTHORIZED);
     }
-    
+
     return this.usersService.changePassword(user.userId, changePasswordDto);
   }
 
@@ -107,8 +128,18 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.MANAGER)
   findOne(@Param('id') id: string) {
-    console.log('🔍 UsersController.findOne called with id:', id, 'type:', typeof id);
-    console.log('🔍 UsersController.findOne - +id result:', +id, 'type:', typeof (+id));
+    console.log(
+      '🔍 UsersController.findOne called with id:',
+      id,
+      'type:',
+      typeof id,
+    );
+    console.log(
+      '🔍 UsersController.findOne - +id result:',
+      +id,
+      'type:',
+      typeof +id,
+    );
     return this.usersService.findOne(+id);
   }
 

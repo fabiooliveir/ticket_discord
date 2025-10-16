@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { Box, Paper, Typography, TextField, Button, Alert, CircularProgress } from '@mui/material';
+import {
+  Box,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  Alert,
+  CircularProgress,
+} from '@mui/material';
 import api from '../services/api';
 
 const LoginPage: React.FC = () => {
@@ -16,14 +24,24 @@ const LoginPage: React.FC = () => {
       await api.login(username, password);
       window.location.href = '/';
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Falha no login');
+      setError(
+        err?.response?.data?.message || err?.message || 'Falha no login',
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', p: 2 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        p: 2,
+      }}
+    >
       <Paper sx={{ p: 4, width: '100%', maxWidth: 400 }}>
         <Typography variant="h5" gutterBottom>
           Entrar

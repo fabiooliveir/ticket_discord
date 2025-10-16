@@ -16,7 +16,9 @@ interface ChangePasswordFormProps {
   onPasswordChange?: () => void;
 }
 
-const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onPasswordChange }) => {
+const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
+  onPasswordChange,
+}) => {
   const [formData, setFormData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -26,14 +28,15 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onPasswordChang
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const handleInputChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: event.target.value,
-    }));
-    setError(null);
-    setSuccess(false);
-  };
+  const handleInputChange =
+    (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData((prev) => ({
+        ...prev,
+        [field]: event.target.value,
+      }));
+      setError(null);
+      setSuccess(false);
+    };
 
   const validateForm = () => {
     if (!formData.currentPassword) {
@@ -71,7 +74,7 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onPasswordChang
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -85,14 +88,14 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onPasswordChang
         currentPassword: formData.currentPassword,
         newPassword: formData.newPassword,
       });
-      
+
       setSuccess(true);
       setFormData({
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
-      
+
       onPasswordChange?.();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erro ao alterar senha');
@@ -101,7 +104,10 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onPasswordChang
     }
   };
 
-  const isFormValid = formData.currentPassword && formData.newPassword && formData.confirmPassword;
+  const isFormValid =
+    formData.currentPassword &&
+    formData.newPassword &&
+    formData.confirmPassword;
 
   return (
     <Card>
@@ -109,13 +115,13 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onPasswordChang
         <Typography variant="h6" gutterBottom>
           Alterar Senha
         </Typography>
-        
+
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
-        
+
         {success && (
           <Alert severity="success" sx={{ mb: 2 }}>
             Senha alterada com sucesso!
@@ -171,18 +177,3 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onPasswordChang
 };
 
 export default ChangePasswordForm;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

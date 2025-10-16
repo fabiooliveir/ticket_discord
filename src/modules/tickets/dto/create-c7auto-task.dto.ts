@@ -6,7 +6,9 @@ export class CreateC7AutoTaskDto {
   title: string;
 
   @IsString()
-  @MinLength(2, { message: 'O nome do cliente deve ter pelo menos 2 caracteres' })
+  @MinLength(2, {
+    message: 'O nome do cliente deve ter pelo menos 2 caracteres',
+  })
   clientName: string;
 
   @IsString()

@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  Box,
-  CircularProgress,
-  Typography,
-  Backdrop,
-} from '@mui/material';
+import { Box, CircularProgress, Typography, Backdrop } from '@mui/material';
 
 interface LoadingSpinnerProps {
   message?: string;

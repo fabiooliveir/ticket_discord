@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Grid,
-  Paper,
-  Typography,
-  Box,
-  useTheme,
-} from '@mui/material';
+import { Grid, Paper, Typography, Box, useTheme } from '@mui/material';
 import {
   LineChart,
   Line,
@@ -60,7 +54,14 @@ const QuickCharts: React.FC = () => {
 
   if (loading) {
     return (
-      <Box sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box
+        sx={{
+          height: 300,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <LoadingSpinner message="Carregando gráficos..." />
       </Box>
     );
@@ -68,7 +69,14 @@ const QuickCharts: React.FC = () => {
 
   if (error) {
     return (
-      <Box sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box
+        sx={{
+          height: 300,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <Typography color="error">{error}</Typography>
       </Box>
     );
@@ -94,19 +102,22 @@ const QuickCharts: React.FC = () => {
           </Typography>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={timelineData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
-              <XAxis 
-                dataKey="date" 
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={theme.palette.divider}
+              />
+              <XAxis
+                dataKey="date"
                 tick={{ fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
               />
-              <YAxis 
-                tick={{ fontSize: 10 }} 
+              <YAxis
+                tick={{ fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
               />
-              <Tooltip 
+              <Tooltip
                 formatter={formatTooltipValue}
                 labelStyle={{ color: theme.palette.text.primary }}
                 contentStyle={{
@@ -142,16 +153,23 @@ const QuickCharts: React.FC = () => {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent }) =>
+                  `${name} ${(percent * 100).toFixed(0)}%`
+                }
                 outerRadius={60}
                 fill="#8884d8"
                 dataKey="value"
               >
-                {(distributionData.byPriority || []).map((entry: any, index: number) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
+                {(distributionData.byPriority || []).map(
+                  (entry: any, index: number) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ),
+                )}
               </Pie>
-              <Tooltip 
+              <Tooltip
                 formatter={formatTooltipValue}
                 contentStyle={{
                   backgroundColor: theme.palette.background.paper,
@@ -172,19 +190,22 @@ const QuickCharts: React.FC = () => {
           </Typography>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={distributionData.byStatus || []}>
-              <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
-              <XAxis 
-                dataKey="name" 
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={theme.palette.divider}
+              />
+              <XAxis
+                dataKey="name"
                 tick={{ fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
               />
-              <YAxis 
-                tick={{ fontSize: 10 }} 
+              <YAxis
+                tick={{ fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
               />
-              <Tooltip 
+              <Tooltip
                 formatter={formatTooltipValue}
                 contentStyle={{
                   backgroundColor: theme.palette.background.paper,

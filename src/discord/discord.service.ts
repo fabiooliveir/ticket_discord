@@ -270,7 +270,8 @@ export class DiscordService {
       const c7AutoChannelId = this.config.DISCORD_C7AUTO_CHANNEL_ID;
       if (!c7AutoChannelId) {
         await interaction.reply({
-          content: '❌ Canal C7 Auto não configurado. Entre em contato com o administrador.',
+          content:
+            '❌ Canal C7 Auto não configurado. Entre em contato com o administrador.',
           ephemeral: true,
         });
         return;
@@ -312,9 +313,18 @@ export class DiscordService {
         .setMaxLength(1000);
 
       // Adicionar componentes ao modal
-      const titleRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(titleInput);
-      const clientNameRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(clientNameInput);
-      const descriptionRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(descriptionInput);
+      const titleRow =
+        new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+          titleInput,
+        );
+      const clientNameRow =
+        new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+          clientNameInput,
+        );
+      const descriptionRow =
+        new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+          descriptionInput,
+        );
 
       modal.addComponents(titleRow, clientNameRow, descriptionRow);
 
@@ -324,9 +334,9 @@ export class DiscordService {
       this.logger.log(`Modal C7 Auto exibido para ${interaction.user.tag}`);
     } catch (error) {
       this.logger.error('Erro ao exibir modal C7 Auto:', error);
-      
+
       let errorMessage = '❌ Erro interno ao criar ticket C7 Auto.';
-      
+
       if (error?.code === 50001 || error?.code === 50013) {
         errorMessage = '❌ Permissões insuficientes para criar ticket C7 Auto.';
       }
@@ -392,7 +402,9 @@ export class DiscordService {
           type: ChannelType.PrivateThread,
         });
       } catch (privateError) {
-        this.logger.warn(`Não foi possível criar thread privada, criando thread pública: ${String(privateError)}`);
+        this.logger.warn(
+          `Não foi possível criar thread privada, criando thread pública: ${String(privateError)}`,
+        );
         // Fallback para thread pública se não tiver permissão para thread privada
         thread = await (channel as any).threads.create({
           name: threadName,
@@ -486,10 +498,7 @@ export class DiscordService {
             inline: false,
           },
         );
-      } else if (
-        ticketData.category === 'Geral' &&
-        ticketData.formData
-      ) {
+      } else if (ticketData.category === 'Geral' && ticketData.formData) {
         embed = embed.addFields(
           {
             name: 'Título do Ticket',
@@ -511,7 +520,8 @@ export class DiscordService {
           },
           {
             name: 'Cliente',
-            value: ticketData.formData?.clientName || ticketData.clientName || 'N/A',
+            value:
+              ticketData.formData?.clientName || ticketData.clientName || 'N/A',
             inline: false,
           },
           {
@@ -553,10 +563,14 @@ export class DiscordService {
       try {
         if (ticketData.authorId && thread.type === ChannelType.PrivateThread) {
           await thread.members.add(ticketData.authorId);
-          this.logger.log(`Autor ${ticketData.authorId} adicionado à thread privada ${thread.id}`);
+          this.logger.log(
+            `Autor ${ticketData.authorId} adicionado à thread privada ${thread.id}`,
+          );
         }
       } catch (addErr) {
-        this.logger.warn(`Não foi possível adicionar o autor à thread: ${String(addErr)}`);
+        this.logger.warn(
+          `Não foi possível adicionar o autor à thread: ${String(addErr)}`,
+        );
       }
 
       // Enviar mensagem inicial na thread
@@ -593,28 +607,29 @@ export class DiscordService {
   }
 
   // Método para criar thread específica para C7 Auto
-  async createC7AutoThread(
-    ticketData: {
-      id: string;
-      title: string;
-      clientName: string;
-      description: string;
-      author: string;
-      authorId: string;
-    },
-  ): Promise<ThreadChannel | null> {
+  async createC7AutoThread(ticketData: {
+    id: string;
+    title: string;
+    clientName: string;
+    description: string;
+    author: string;
+    authorId: string;
+  }): Promise<ThreadChannel | null> {
     try {
       const c7AutoChannelId = this.config.DISCORD_C7AUTO_CHANNEL_ID;
       const suporteRoleId = this.config.SUPORTE_ROLE_ID;
 
       if (!c7AutoChannelId || !suporteRoleId) {
-        this.logger.error('DISCORD_C7AUTO_CHANNEL_ID ou SUPORTE_ROLE_ID não configurados');
+        this.logger.error(
+          'DISCORD_C7AUTO_CHANNEL_ID ou SUPORTE_ROLE_ID não configurados',
+        );
         return null;
       }
 
-      const channel = await this.teamsService.discordBot.client.channels.fetch(
-        c7AutoChannelId,
-      );
+      const channel =
+        await this.teamsService.discordBot.client.channels.fetch(
+          c7AutoChannelId,
+        );
 
       if (!channel || !channel.isTextBased()) {
         this.logger.error(
@@ -628,12 +643,18 @@ export class DiscordService {
         channel.type !== ChannelType.GuildText &&
         channel.type !== ChannelType.GuildNews
       ) {
-        this.logger.error(`Canal C7 Auto ${c7AutoChannelId} não suporta threads`);
+        this.logger.error(
+          `Canal C7 Auto ${c7AutoChannelId} não suporta threads`,
+        );
         return null;
       }
 
       // Criar thread com nome do ticket
-      const threadName = `🔴 🎫 ${ticketData.title} — ${ticketData.clientName}`.substring(0, 100);
+      const threadName =
+        `🔴 🎫 ${ticketData.title} — ${ticketData.clientName}`.substring(
+          0,
+          100,
+        );
 
       let thread: ThreadChannel;
       try {
@@ -645,7 +666,9 @@ export class DiscordService {
           type: ChannelType.PrivateThread,
         });
       } catch (privateError) {
-        this.logger.warn(`Não foi possível criar thread privada C7 Auto, criando thread pública: ${String(privateError)}`);
+        this.logger.warn(
+          `Não foi possível criar thread privada C7 Auto, criando thread pública: ${String(privateError)}`,
+        );
         // Fallback para thread pública se não tiver permissão para thread privada
         thread = await (channel as any).threads.create({
           name: threadName,
@@ -708,7 +731,9 @@ export class DiscordService {
         if (thread.type === ChannelType.PrivateThread) {
           // Adicionar o autor como membro da thread
           await thread.members.add(ticketData.authorId);
-          this.logger.log(`Autor ${ticketData.authorId} adicionado à thread privada C7 Auto ${thread.id}`);
+          this.logger.log(
+            `Autor ${ticketData.authorId} adicionado à thread privada C7 Auto ${thread.id}`,
+          );
 
           // Configurar permissões para a equipe de suporte
           await (thread as any).permissionOverwrites.create(suporteRoleId, {
@@ -718,14 +743,21 @@ export class DiscordService {
           });
 
           // Negar acesso para @everyone
-          await (thread as any).permissionOverwrites.create(thread.guild.roles.everyone, {
-            ViewChannel: false,
-          });
+          await (thread as any).permissionOverwrites.create(
+            thread.guild.roles.everyone,
+            {
+              ViewChannel: false,
+            },
+          );
 
-          this.logger.log(`Permissões configuradas para thread C7 Auto ${thread.id}`);
+          this.logger.log(
+            `Permissões configuradas para thread C7 Auto ${thread.id}`,
+          );
         }
       } catch (permError) {
-        this.logger.warn(`Erro ao configurar permissões da thread C7 Auto: ${String(permError)}`);
+        this.logger.warn(
+          `Erro ao configurar permissões da thread C7 Auto: ${String(permError)}`,
+        );
       }
 
       // Enviar mensagem inicial na thread
@@ -789,7 +821,7 @@ export class DiscordService {
       'Suporte Técnico': 'suporte',
       'Customer Success': 'cs',
       'Tráfego Pago': 'trafego',
-      'Financeiro': 'financeiro',
+      Financeiro: 'financeiro',
     };
 
     return nameToKey[team.name] || 'suporte';
@@ -861,7 +893,8 @@ export class DiscordService {
 
       // Atualizar nome da thread para indicar que foi atribuído (emoji verde ativo)
       if (interaction.channel && interaction.channel.isThread()) {
-        const username = interaction.user.username || interaction.user.tag.split('#')[0];
+        const username =
+          interaction.user.username || interaction.user.tag.split('#')[0];
         const newThreadName = `🟢 🎫 ${username} | ${ticket.metadata?.clientName || 'Cliente'}`;
         await interaction.channel.setName(newThreadName);
       }
@@ -987,12 +1020,18 @@ export class DiscordService {
           },
           {
             name: 'Cliente',
-            value: ticket.metadata.formData?.clientName || ticket.metadata.clientName || 'N/A',
+            value:
+              ticket.metadata.formData?.clientName ||
+              ticket.metadata.clientName ||
+              'N/A',
             inline: false,
           },
           {
             name: 'Descrição',
-            value: ticket.metadata.formData?.description || ticket.description || 'N/A',
+            value:
+              ticket.metadata.formData?.description ||
+              ticket.description ||
+              'N/A',
             inline: false,
           },
         );
@@ -1177,9 +1216,21 @@ export class DiscordService {
           `**Cliente:** ${ticket.metadata?.clientName || 'N/A'}\n**Categoria:** ${ticket.metadata?.category || 'N/A'}\n**Prioridade:** ${ticket.priority}`,
         )
         .addFields(
-          { name: 'Status', value: `${statusEmoji} ${statusText}`, inline: true },
-          { name: 'Equipe', value: ticket.metadata?.assignedTeam || 'N/A', inline: true },
-          { name: 'Responsável', value: `<@${interaction.user.id}>`, inline: true },
+          {
+            name: 'Status',
+            value: `${statusEmoji} ${statusText}`,
+            inline: true,
+          },
+          {
+            name: 'Equipe',
+            value: ticket.metadata?.assignedTeam || 'N/A',
+            inline: true,
+          },
+          {
+            name: 'Responsável',
+            value: `<@${interaction.user.id}>`,
+            inline: true,
+          },
         )
         .setColor(isPaused ? 0x00ff00 : 0xffaa00)
         .setTimestamp()
@@ -1209,25 +1260,35 @@ export class DiscordService {
         archiveButton,
       );
 
-      await interaction.update({ embeds: [updatedEmbed], components: [buttonRow] });
+      await interaction.update({
+        embeds: [updatedEmbed],
+        components: [buttonRow],
+      });
 
       // Atualizar nome da thread mantendo o username do responsável
       if (interaction.channel && interaction.channel.isThread()) {
         try {
-          const username = interaction.user.username || interaction.user.tag.split('#')[0];
+          const username =
+            interaction.user.username || interaction.user.tag.split('#')[0];
           const clientNameFromMeta = ticket.metadata?.clientName;
           // Se por algum motivo o nome do cliente não estiver no metadata, tenta extrair do nome atual da thread
           const currentName = (interaction.channel as any).name || '';
           const extractedClientName = currentName.includes('|')
             ? currentName.split('|').slice(-1)[0].trim()
             : currentName.includes('🎫')
-            ? currentName.split('🎫').slice(1).join('🎫').trim()
-            : currentName;
-          const safeClientName = (clientNameFromMeta || extractedClientName || 'Cliente').substring(0, 100);
+              ? currentName.split('🎫').slice(1).join('🎫').trim()
+              : currentName;
+          const safeClientName = (
+            clientNameFromMeta ||
+            extractedClientName ||
+            'Cliente'
+          ).substring(0, 100);
           const newThreadName = `🟢 🎫 ${username} | ${safeClientName}`;
           await interaction.channel.setName(newThreadName);
         } catch (renameErr) {
-          this.logger.warn(`Não foi possível renomear a thread: ${String(renameErr)}`);
+          this.logger.warn(
+            `Não foi possível renomear a thread: ${String(renameErr)}`,
+          );
         }
       }
     } catch (error) {
@@ -1287,10 +1348,11 @@ export class DiscordService {
         // Capturar mensagens da thread antes de arquivar
         let capturedMessages: any[] = [];
         try {
-          capturedMessages = await this.messageCaptureService.captureThreadMessages(
-            interaction.channel as any,
-            this.teamsService.discordBot.client.user?.id || '',
-          );
+          capturedMessages =
+            await this.messageCaptureService.captureThreadMessages(
+              interaction.channel as any,
+              this.teamsService.discordBot.client.user?.id || '',
+            );
           this.logger.log(
             `Capturadas ${capturedMessages.length} mensagens do ticket ${ticketId}`,
           );
@@ -1411,7 +1473,7 @@ export class DiscordService {
       }> = [];
       for (const [userId, member] of members) {
         if (options.length >= 25) break; // Limite do Discord
-        
+
         options.push({
           label: member.displayName || member.user.username,
           description: `Transferir ticket para ${member.displayName || member.user.username}`,
@@ -1422,17 +1484,20 @@ export class DiscordService {
       // Criar select menu
       const selectMenu = new StringSelectMenuBuilder()
         .setCustomId(`transfer_select_${ticketId}`)
-        .setPlaceholder('Selecione um membro da equipe para transferir o ticket')
+        .setPlaceholder(
+          'Selecione um membro da equipe para transferir o ticket',
+        )
         .addOptions(options);
 
-      const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>()
-        .addComponents(selectMenu);
+      const selectRow =
+        new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          selectMenu,
+        );
 
       await interaction.editReply({
         content: `🔄 **Transferir Ticket #${ticketId}**\nSelecione o membro da equipe para quem deseja transferir este ticket:`,
         components: [selectRow],
       });
-
     } catch (error) {
       this.logger.error('Erro ao transferir ticket:', error);
       try {
@@ -1452,7 +1517,8 @@ export class DiscordService {
 
       // Obter o usuário selecionado
       const selectedUserId = interaction.values[0];
-      const selectedMember = interaction.guild.members.cache.get(selectedUserId);
+      const selectedMember =
+        interaction.guild.members.cache.get(selectedUserId);
 
       if (!selectedMember) {
         await interaction.editReply({
@@ -1493,7 +1559,8 @@ export class DiscordService {
 
       // Atualizar nome da thread com o novo responsável
       if (interaction.channel && interaction.channel.isThread()) {
-        const username = selectedMember.user.username || selectedMember.user.tag.split('#')[0];
+        const username =
+          selectedMember.user.username || selectedMember.user.tag.split('#')[0];
         const newThreadName = `🟢 🎫 ${username} | ${ticket.metadata?.clientName || 'Cliente'}`;
         await interaction.channel.setName(newThreadName);
       }
@@ -1505,8 +1572,10 @@ export class DiscordService {
       if (interaction.channel && interaction.channel.isThread()) {
         const embed = new EmbedBuilder()
           .setTitle('🔄 Ticket Transferido')
-          .setDescription(`Ticket #${ticketId} foi transferido para <@${selectedUserId}> por <@${interaction.user.id}>`)
-          .setColor(0x4CAF50)
+          .setDescription(
+            `Ticket #${ticketId} foi transferido para <@${selectedUserId}> por <@${interaction.user.id}>`,
+          )
+          .setColor(0x4caf50)
           .setTimestamp()
           .setFooter({ text: `Transferido por ${interaction.user.tag}` });
 
@@ -1519,8 +1588,9 @@ export class DiscordService {
         content: `✅ Ticket transferido com sucesso para <@${selectedUserId}>!`,
       });
 
-      this.logger.log(`Ticket ${ticketId} transferido para ${selectedMember.user.tag} por ${interaction.user.tag}`);
-
+      this.logger.log(
+        `Ticket ${ticketId} transferido para ${selectedMember.user.tag} por ${interaction.user.tag}`,
+      );
     } catch (error) {
       this.logger.error('Erro ao processar seleção de transferência:', error);
       try {

@@ -27,10 +27,19 @@ interface PerformanceTableProps {
   loading?: boolean;
 }
 
-type SortField = 'agentId' | 'ticketsAssigned' | 'ticketsResolved' | 'complianceRate' | 'averageResponseTime' | 'averageResolutionTime';
+type SortField =
+  | 'agentId'
+  | 'ticketsAssigned'
+  | 'ticketsResolved'
+  | 'complianceRate'
+  | 'averageResponseTime'
+  | 'averageResolutionTime';
 type SortDirection = 'asc' | 'desc';
 
-const PerformanceTable: React.FC<PerformanceTableProps> = ({ data, loading = false }) => {
+const PerformanceTable: React.FC<PerformanceTableProps> = ({
+  data,
+  loading = false,
+}) => {
   const theme = useTheme();
   const [sortField, setSortField] = useState<SortField>('complianceRate');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -49,7 +58,7 @@ const PerformanceTable: React.FC<PerformanceTableProps> = ({ data, loading = fal
     const bValue = b.metrics?.[sortField] || b[sortField] || 0;
 
     if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortDirection === 'asc' 
+      return sortDirection === 'asc'
         ? aValue.localeCompare(bValue)
         : bValue.localeCompare(aValue);
     }
@@ -63,17 +72,19 @@ const PerformanceTable: React.FC<PerformanceTableProps> = ({ data, loading = fal
   const formatTime = (minutes: number): string => {
     if (minutes === 0) return '0 min';
     if (minutes < 60) return `${minutes} min`;
-    
+
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
-    
+
     if (hours < 24) {
-      return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}min` : `${hours}h`;
+      return remainingMinutes > 0
+        ? `${hours}h ${remainingMinutes}min`
+        : `${hours}h`;
     }
-    
+
     const days = Math.floor(hours / 24);
     const remainingHours = hours % 24;
-    
+
     return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
   };
 
@@ -85,10 +96,12 @@ const PerformanceTable: React.FC<PerformanceTableProps> = ({ data, loading = fal
 
   const getTrendIcon = (trends: any) => {
     if (!trends) return <TrendingFlat fontSize="small" />;
-    
+
     const weekOverWeek = trends.weekOverWeek || 0;
-    if (weekOverWeek > 0) return <TrendingUp fontSize="small" color="success" />;
-    if (weekOverWeek < 0) return <TrendingDown fontSize="small" color="error" />;
+    if (weekOverWeek > 0)
+      return <TrendingUp fontSize="small" color="success" />;
+    if (weekOverWeek < 0)
+      return <TrendingDown fontSize="small" color="error" />;
     return <TrendingFlat fontSize="small" />;
   };
 
@@ -98,7 +111,14 @@ const PerformanceTable: React.FC<PerformanceTableProps> = ({ data, loading = fal
         <Typography variant="h6" gutterBottom>
           Performance dos Agentes
         </Typography>
-        <Box sx={{ height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Box
+          sx={{
+            height: 400,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
           <Typography color="text.secondary">Carregando dados...</Typography>
         </Box>
       </Paper>
@@ -111,8 +131,17 @@ const PerformanceTable: React.FC<PerformanceTableProps> = ({ data, loading = fal
         <Typography variant="h6" gutterBottom>
           Performance dos Agentes
         </Typography>
-        <Box sx={{ height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Typography color="text.secondary">Nenhum dado de performance disponível</Typography>
+        <Box
+          sx={{
+            height: 400,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Typography color="text.secondary">
+            Nenhum dado de performance disponível
+          </Typography>
         </Box>
       </Paper>
     );
@@ -120,10 +149,15 @@ const PerformanceTable: React.FC<PerformanceTableProps> = ({ data, loading = fal
 
   return (
     <Paper sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">
-          Performance dos Agentes
-        </Typography>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 2,
+        }}
+      >
+        <Typography variant="h6">Performance dos Agentes</Typography>
         <Typography variant="body2" color="text.secondary">
           {data.length} agentes
         </Typography>
@@ -145,7 +179,9 @@ const PerformanceTable: React.FC<PerformanceTableProps> = ({ data, loading = fal
               <TableCell align="right">
                 <TableSortLabel
                   active={sortField === 'ticketsAssigned'}
-                  direction={sortField === 'ticketsAssigned' ? sortDirection : 'asc'}
+                  direction={
+                    sortField === 'ticketsAssigned' ? sortDirection : 'asc'
+                  }
                   onClick={() => handleSort('ticketsAssigned')}
                 >
                   Tickets Atribuídos
@@ -154,7 +190,9 @@ const PerformanceTable: React.FC<PerformanceTableProps> = ({ data, loading = fal
               <TableCell align="right">
                 <TableSortLabel
                   active={sortField === 'ticketsResolved'}
-                  direction={sortField === 'ticketsResolved' ? sortDirection : 'asc'}
+                  direction={
+                    sortField === 'ticketsResolved' ? sortDirection : 'asc'
+                  }
                   onClick={() => handleSort('ticketsResolved')}
                 >
                   Resolvidos
@@ -163,7 +201,9 @@ const PerformanceTable: React.FC<PerformanceTableProps> = ({ data, loading = fal
               <TableCell align="right">
                 <TableSortLabel
                   active={sortField === 'complianceRate'}
-                  direction={sortField === 'complianceRate' ? sortDirection : 'asc'}
+                  direction={
+                    sortField === 'complianceRate' ? sortDirection : 'asc'
+                  }
                   onClick={() => handleSort('complianceRate')}
                 >
                   Taxa de Compliance
@@ -172,7 +212,9 @@ const PerformanceTable: React.FC<PerformanceTableProps> = ({ data, loading = fal
               <TableCell align="right">
                 <TableSortLabel
                   active={sortField === 'averageResponseTime'}
-                  direction={sortField === 'averageResponseTime' ? sortDirection : 'asc'}
+                  direction={
+                    sortField === 'averageResponseTime' ? sortDirection : 'asc'
+                  }
                   onClick={() => handleSort('averageResponseTime')}
                 >
                   Tempo de Resposta
@@ -181,25 +223,25 @@ const PerformanceTable: React.FC<PerformanceTableProps> = ({ data, loading = fal
               <TableCell align="right">
                 <TableSortLabel
                   active={sortField === 'averageResolutionTime'}
-                  direction={sortField === 'averageResolutionTime' ? sortDirection : 'asc'}
+                  direction={
+                    sortField === 'averageResolutionTime'
+                      ? sortDirection
+                      : 'asc'
+                  }
                   onClick={() => handleSort('averageResolutionTime')}
                 >
                   Tempo de Resolução
                 </TableSortLabel>
               </TableCell>
-              <TableCell align="center">
-                Tendência
-              </TableCell>
-              <TableCell align="center">
-                Ações
-              </TableCell>
+              <TableCell align="center">Tendência</TableCell>
+              <TableCell align="center">Ações</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {sortedData.map((agent, index) => {
               const metrics = agent.metrics || agent;
               const trends = agent.trends || {};
-              
+
               return (
                 <TableRow key={agent.agentId || index} hover>
                   <TableCell>
@@ -225,7 +267,9 @@ const PerformanceTable: React.FC<PerformanceTableProps> = ({ data, loading = fal
                   <TableCell align="right">
                     <Chip
                       label={`${metrics.complianceRate || 0}%`}
-                      color={getComplianceColor(metrics.complianceRate || 0) as any}
+                      color={
+                        getComplianceColor(metrics.complianceRate || 0) as any
+                      }
                       size="small"
                       variant="outlined"
                     />
@@ -241,11 +285,18 @@ const PerformanceTable: React.FC<PerformanceTableProps> = ({ data, loading = fal
                     </Typography>
                   </TableCell>
                   <TableCell align="center">
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
                       {getTrendIcon(trends)}
                       {trends.weekOverWeek !== undefined && (
                         <Typography variant="caption" sx={{ ml: 0.5 }}>
-                          {trends.weekOverWeek > 0 ? '+' : ''}{trends.weekOverWeek}%
+                          {trends.weekOverWeek > 0 ? '+' : ''}
+                          {trends.weekOverWeek}%
                         </Typography>
                       )}
                     </Box>

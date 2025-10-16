@@ -1,11 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import {
-  Box,
-  Typography,
-  Button,
-  Paper,
-  Alert,
-} from '@mui/material';
+import { Box, Typography, Button, Paper, Alert } from '@mui/material';
 import { ErrorOutline, Refresh } from '@mui/icons-material';
 
 interface Props {
@@ -89,11 +83,19 @@ class ErrorBoundary extends Component<Props, State> {
                 <Typography variant="subtitle2" gutterBottom>
                   Detalhes do erro (modo desenvolvimento):
                 </Typography>
-                <Typography variant="body2" component="pre" sx={{ fontSize: '0.75rem' }}>
+                <Typography
+                  variant="body2"
+                  component="pre"
+                  sx={{ fontSize: '0.75rem' }}
+                >
                   {this.state.error.toString()}
                 </Typography>
                 {this.state.errorInfo && (
-                  <Typography variant="body2" component="pre" sx={{ fontSize: '0.75rem', mt: 1 }}>
+                  <Typography
+                    variant="body2"
+                    component="pre"
+                    sx={{ fontSize: '0.75rem', mt: 1 }}
+                  >
                     {this.state.errorInfo.componentStack}
                   </Typography>
                 )}
