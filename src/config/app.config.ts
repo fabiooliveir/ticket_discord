@@ -18,6 +18,7 @@ export const appConfig = () => ({
       trafego: process.env.TRAFEGO_CHANNEL_ID,
       financeiro: process.env.FINANCEIRO_CHANNEL_ID,
       c7auto: process.env.DISCORD_C7AUTO_CHANNEL_ID,
+      activation: process.env.DISCORD_ACTIVATION_CHANNEL_ID,
     },
     roles: {
       suporte: process.env.SUPORTE_ROLE_ID,

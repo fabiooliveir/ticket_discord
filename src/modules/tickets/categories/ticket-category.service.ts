@@ -199,6 +199,32 @@ export class TicketCategoryService {
       ],
     };
 
+    // Categoria: Ativação
+    const activation: TicketCategory = {
+      id: 'activation',
+      name: 'Ativação',
+      description: 'Tickets para ativação de novos serviços ou funcionalidades',
+      team: 'suporte',
+      priority: 'medium',
+      requiresClient: true,
+      formFields: [
+        {
+          id: 'title',
+          label: 'Título do Ticket',
+          type: 'text',
+          required: true,
+          placeholder: 'Resumo breve da ativação...',
+        },
+        {
+          id: 'description',
+          label: 'Descrição Detalhada',
+          type: 'textarea',
+          required: true,
+          placeholder: 'Descreva detalhadamente a ativação...',
+        },
+      ],
+    };
+
     // Categoria: C7 Auto
     const c7Auto: TicketCategory = {
       id: 'c7-auto',
@@ -236,11 +262,13 @@ export class TicketCategoryService {
     this.categories.set('new-tagging', newTagging);
     this.categories.set('budget-adjustment', budgetAdjustment);
     this.categories.set('general', general);
+    this.categories.set('activation', activation);
     this.categories.set('c7-auto', c7Auto);
     this.logger.log(`Categoria 'correction-tagging' inicializada`);
     this.logger.log(`Categoria 'new-tagging' inicializada`);
     this.logger.log(`Categoria 'budget-adjustment' inicializada`);
     this.logger.log(`Categoria 'general' inicializada`);
+    this.logger.log(`Categoria 'activation' inicializada`);
     this.logger.log(`Categoria 'c7-auto' inicializada`);
   }
 

@@ -3,6 +3,7 @@ export const discordConfig = () => ({
   guildId: process.env.GUILD_ID,
   clientId: process.env.CLIENT_ID,
   DISCORD_C7AUTO_CHANNEL_ID: process.env.DISCORD_C7AUTO_CHANNEL_ID,
+  DISCORD_ACTIVATION_CHANNEL_ID: process.env.DISCORD_ACTIVATION_CHANNEL_ID,
   SUPORTE_ROLE_ID: process.env.SUPORTE_ROLE_ID,
   CS_ROLE_ID: process.env.CS_ROLE_ID,
   TRAFEGO_ROLE_ID: process.env.TRAFEGO_ROLE_ID,

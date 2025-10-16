@@ -369,13 +369,27 @@ export class DiscordService {
     },
   ): Promise<ThreadChannel | null> {
     try {
+      // Determinar canal baseado na categoria
+      let targetChannelId = team.channelId;
+      
+      // Canal específico para tickets de Ativação
+      if (ticketData.category === 'Ativação') {
+        const activationChannelId = this.config.DISCORD_ACTIVATION_CHANNEL_ID;
+        if (activationChannelId) {
+          targetChannelId = activationChannelId;
+          this.logger.log(`Ticket de Ativação direcionado para canal específico: ${targetChannelId}`);
+        } else {
+          this.logger.warn('Canal de Ativação não configurado, usando canal padrão da equipe');
+        }
+      }
+      
       const channel = await this.teamsService.discordBot.client.channels.fetch(
-        team.channelId,
+        targetChannelId,
       );
 
       if (!channel || !channel.isTextBased()) {
         this.logger.error(
-          `Canal ${team.channelId} não encontrado ou não é de texto`,
+          `Canal ${targetChannelId} não encontrado ou não é de texto`,
         );
         return null;
       }
@@ -385,7 +399,7 @@ export class DiscordService {
         channel.type !== ChannelType.GuildText &&
         channel.type !== ChannelType.GuildNews
       ) {
-        this.logger.error(`Canal ${team.channelId} não suporta threads`);
+        this.logger.error(`Canal ${targetChannelId} não suporta threads`);
         return null;
       }
 
@@ -432,104 +446,42 @@ export class DiscordService {
         .setTimestamp()
         .setFooter({ text: `Criado por ${ticketData.author}` });
 
-      // Adicionar campos específicos baseados na categoria
-      if (ticketData.category === 'Novo Tagueamento' && ticketData.formData) {
-        embed = embed.addFields(
-          {
-            name: 'Meta Account ID',
-            value: ticketData.formData.metaAccountId || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Google Ads ID',
-            value: ticketData.formData.googleAdsAccountId || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Facebook Pixel ID',
-            value: ticketData.formData.facebookPixelId || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Informações Adicionais',
-            value: ticketData.formData.additionalInfo || 'Nenhuma',
-            inline: false,
-          },
-        );
-      } else if (
-        ticketData.category === 'Correção de Tagueamento' &&
-        ticketData.formData
-      ) {
-        embed = embed.addFields(
-          {
-            name: 'Site',
-            value: ticketData.formData.website || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Descrição do Problema',
-            value: ticketData.formData.problemDescription || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Informações Adicionais',
-            value: ticketData.formData.additionalInfo || 'Nenhuma',
-            inline: false,
-          },
-        );
-      } else if (
-        ticketData.category === 'Ajuste de Verba' &&
-        ticketData.formData
-      ) {
-        embed = embed.addFields(
-          {
-            name: 'Motivo do Ajuste',
-            value: ticketData.formData.adjustmentReason || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Valor Solicitado',
-            value: ticketData.formData.requestedAmount || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Informações da Campanha',
-            value: ticketData.formData.campaignInfo || 'Nenhuma',
-            inline: false,
-          },
-        );
-      } else if (ticketData.category === 'Geral' && ticketData.formData) {
-        embed = embed.addFields(
-          {
-            name: 'Título do Ticket',
-            value: ticketData.formData.title || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Descrição Detalhada',
-            value: ticketData.formData.description || 'N/A',
-            inline: false,
-          },
-        );
-      } else if (ticketData.category === 'C7 Auto') {
-        embed = embed.addFields(
-          {
-            name: 'Título',
-            value: ticketData.formData?.title || ticketData.title || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Cliente',
-            value:
-              ticketData.formData?.clientName || ticketData.clientName || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Descrição',
-            value: ticketData.formData?.description || 'N/A',
-            inline: false,
-          },
-        );
+      // Adicionar campos do formulário de forma genérica para TODAS as categorias
+      if (ticketData.formData) {
+        // Obter a categoria para mapear os campos
+        const categoryId = this.getCategoryIdByName(ticketData.category);
+        const category = this.ticketCategoryService.getCategory(categoryId);
+        
+        if (category && category.formFields) {
+          // Adicionar campos baseados na configuração da categoria
+          category.formFields.forEach(field => {
+            const value = ticketData.formData[field.id];
+            if (value !== undefined && value !== null && value !== '') {
+              embed = embed.addFields({
+                name: field.label,
+                value: value.toString(),
+                inline: false,
+              });
+            }
+          });
+        } else {
+          // Fallback: adicionar todos os campos disponíveis no formData
+          Object.entries(ticketData.formData).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+              // Capitalizar a primeira letra e substituir camelCase por espaços
+              const label = key
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/^./, str => str.toUpperCase())
+                .trim();
+              
+              embed = embed.addFields({
+                name: label,
+                value: value.toString(),
+                inline: false,
+              });
+            }
+          });
+        }
       }
 
       // Botão para puxar ticket
@@ -926,115 +878,42 @@ export class DiscordService {
         .setTimestamp()
         .setFooter({ text: `Atribuído por ${interaction.user.tag}` });
 
-      // Adicionar campos específicos baseados na categoria
-      if (
-        ticket.metadata?.category === 'Novo Tagueamento' &&
-        ticket.metadata?.formData
-      ) {
-        updatedEmbed = updatedEmbed.addFields(
-          {
-            name: 'Meta Account ID',
-            value: ticket.metadata.formData.metaAccountId || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Google Ads ID',
-            value: ticket.metadata.formData.googleAdsAccountId || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Facebook Pixel ID',
-            value: ticket.metadata.formData.facebookPixelId || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Informações Adicionais',
-            value: ticket.metadata.formData.additionalInfo || 'Nenhuma',
-            inline: false,
-          },
-        );
-      } else if (
-        ticket.metadata?.category === 'Correção de Tagueamento' &&
-        ticket.metadata?.formData
-      ) {
-        updatedEmbed = updatedEmbed.addFields(
-          {
-            name: 'Site',
-            value: ticket.metadata.formData.website || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Descrição do Problema',
-            value: ticket.metadata.formData.problemDescription || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Informações Adicionais',
-            value: ticket.metadata.formData.additionalInfo || 'Nenhuma',
-            inline: false,
-          },
-        );
-      } else if (
-        ticket.metadata?.category === 'Ajuste de Verba' &&
-        ticket.metadata?.formData
-      ) {
-        updatedEmbed = updatedEmbed.addFields(
-          {
-            name: 'Motivo do Ajuste',
-            value: ticket.metadata.formData.adjustmentReason || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Valor Solicitado',
-            value: ticket.metadata.formData.requestedAmount || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Informações da Campanha',
-            value: ticket.metadata.formData.campaignInfo || 'Nenhuma',
-            inline: false,
-          },
-        );
-      } else if (
-        ticket.metadata?.category === 'Geral' &&
-        ticket.metadata?.formData
-      ) {
-        updatedEmbed = updatedEmbed.addFields(
-          {
-            name: 'Título do Ticket',
-            value: ticket.metadata.formData.title || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Descrição Detalhada',
-            value: ticket.metadata.formData.description || 'N/A',
-            inline: false,
-          },
-        );
-      } else if (ticket.metadata?.category === 'C7 Auto') {
-        updatedEmbed = updatedEmbed.addFields(
-          {
-            name: 'Título',
-            value: ticket.metadata.formData?.title || ticket.title || 'N/A',
-            inline: false,
-          },
-          {
-            name: 'Cliente',
-            value:
-              ticket.metadata.formData?.clientName ||
-              ticket.metadata.clientName ||
-              'N/A',
-            inline: false,
-          },
-          {
-            name: 'Descrição',
-            value:
-              ticket.metadata.formData?.description ||
-              ticket.description ||
-              'N/A',
-            inline: false,
-          },
-        );
+      // Adicionar campos do formulário de forma genérica para TODAS as categorias
+      if (ticket.metadata?.formData) {
+        // Obter a categoria para mapear os campos
+        const categoryId = this.getCategoryIdByName(ticket.metadata.category);
+        const category = this.ticketCategoryService.getCategory(categoryId);
+        
+        if (category && category.formFields) {
+          // Adicionar campos baseados na configuração da categoria
+          category.formFields.forEach(field => {
+            const value = ticket.metadata.formData[field.id];
+            if (value !== undefined && value !== null && value !== '') {
+              updatedEmbed = updatedEmbed.addFields({
+                name: field.label,
+                value: value.toString(),
+                inline: false,
+              });
+            }
+          });
+        } else {
+          // Fallback: adicionar todos os campos disponíveis no formData
+          Object.entries(ticket.metadata.formData).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+              // Capitalizar a primeira letra e substituir camelCase por espaços
+              const label = key
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/^./, str => str.toUpperCase())
+                .trim();
+              
+              updatedEmbed = updatedEmbed.addFields({
+                name: label,
+                value: value.toString(),
+                inline: false,
+              });
+            }
+          });
+        }
       }
 
       // Botões atualizados (toggle pausa)
@@ -1210,7 +1089,7 @@ export class DiscordService {
         ? '**EM ANDAMENTO**'
         : '**PAUSADO** - Aguardando';
 
-      const updatedEmbed = new EmbedBuilder()
+      let updatedEmbed = new EmbedBuilder()
         .setTitle(`🎫 Ticket #${ticket.id}`)
         .setDescription(
           `**Cliente:** ${ticket.metadata?.clientName || 'N/A'}\n**Categoria:** ${ticket.metadata?.category || 'N/A'}\n**Prioridade:** ${ticket.priority}`,
@@ -1235,6 +1114,44 @@ export class DiscordService {
         .setColor(isPaused ? 0x00ff00 : 0xffaa00)
         .setTimestamp()
         .setFooter({ text: `Status alterado por ${interaction.user.tag}` });
+
+      // Adicionar campos do formulário de forma genérica para TODAS as categorias
+      if (ticket.metadata?.formData) {
+        // Obter a categoria para mapear os campos
+        const categoryId = this.getCategoryIdByName(ticket.metadata.category);
+        const category = this.ticketCategoryService.getCategory(categoryId);
+        
+        if (category && category.formFields) {
+          // Adicionar campos baseados na configuração da categoria
+          category.formFields.forEach(field => {
+            const value = ticket.metadata.formData[field.id];
+            if (value !== undefined && value !== null && value !== '') {
+              updatedEmbed = updatedEmbed.addFields({
+                name: field.label,
+                value: value.toString(),
+                inline: false,
+              });
+            }
+          });
+        } else {
+          // Fallback: adicionar todos os campos disponíveis no formData
+          Object.entries(ticket.metadata.formData).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+              // Capitalizar a primeira letra e substituir camelCase por espaços
+              const label = key
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/^./, str => str.toUpperCase())
+                .trim();
+              
+              updatedEmbed = updatedEmbed.addFields({
+                name: label,
+                value: value.toString(),
+                inline: false,
+              });
+            }
+          });
+        }
+      }
 
       const togglePauseButton = new ButtonBuilder()
         .setCustomId(`toggle_pause_${ticketId}`)
@@ -1771,8 +1688,10 @@ export class DiscordService {
                   ? 'Novo'
                   : selectedCategory === 'budget-adjustment'
                     ? 'Ajuste de Verba'
-                    : selectedCategory === 'general'
-                      ? 'Geral'
+                  : selectedCategory === 'general'
+                    ? 'Geral'
+                    : selectedCategory === 'activation'
+                      ? 'Ativação'
                       : 'Desconhecida'
             }`
           : 'Selecione a categoria do ticket',
@@ -1806,6 +1725,13 @@ export class DiscordService {
           value: 'general',
           emoji: '📋',
           default: selectedCategory === 'general',
+        },
+        {
+          label: 'Ativação',
+          description: 'Ativação de novos serviços ou funcionalidades',
+          value: 'activation',
+          emoji: '🚀',
+          default: selectedCategory === 'activation',
         },
       ]);
 
@@ -2266,6 +2192,9 @@ export class DiscordService {
       } else if (category === 'general') {
         const modal = GeneralForm.createModal(clientId);
         await interaction.showModal(modal);
+      } else if (category === 'activation') {
+        const modal = this.createActivationModal(clientId);
+        await interaction.showModal(modal);
       } else {
         await interaction.reply({
           content: '❌ Categoria não reconhecida.',
@@ -2419,5 +2348,51 @@ export class DiscordService {
         });
       }
     }
+  }
+
+  private getCategoryIdByName(categoryName: string): string {
+    const categoryMap: Record<string, string> = {
+      'Correção de Tagueamento': 'correction-tagging',
+      'Novo Tagueamento': 'new-tagging',
+      'Ajuste de Verba': 'budget-adjustment',
+      'Geral': 'general',
+      'Ativação': 'activation',
+      'C7 Auto': 'c7-auto',
+    };
+    return categoryMap[categoryName] || '';
+  }
+
+  private createActivationModal(clientId: string): ModalBuilder {
+    const modal = new ModalBuilder()
+      .setCustomId(`activation_form_${clientId}`)
+      .setTitle('🚀 Ticket de Ativação');
+
+    // Campo: Título
+    const titleInput = new TextInputBuilder()
+      .setCustomId('title')
+      .setLabel('Título do Ticket')
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder('Resumo breve da ativação...')
+      .setRequired(true)
+      .setMaxLength(100);
+
+    // Campo: Descrição
+    const descriptionInput = new TextInputBuilder()
+      .setCustomId('description')
+      .setLabel('Descrição Detalhada')
+      .setStyle(TextInputStyle.Paragraph)
+      .setPlaceholder('Descreva detalhadamente a ativação...')
+      .setRequired(true)
+      .setMaxLength(2000);
+
+    const titleRow = new ActionRowBuilder<TextInputBuilder>().addComponents(
+      titleInput,
+    );
+    const descriptionRow =
+      new ActionRowBuilder<TextInputBuilder>().addComponents(descriptionInput);
+
+    modal.addComponents(titleRow, descriptionRow);
+
+    return modal;
   }
 }

@@ -48,6 +48,8 @@ export class FormHandlerService {
       await this.handleBudgetAdjustmentModal(interaction);
     } else if (customId.startsWith('general_form_')) {
       await this.handleGeneralModal(interaction);
+    } else if (customId.startsWith('activation_form_')) {
+      await this.handleActivationModal(interaction);
     } else if (customId === 'c7auto_ticket_modal') {
       await this.handleC7AutoTicketModal(interaction);
     } else {
@@ -71,7 +73,8 @@ export class FormHandlerService {
       customId.startsWith('confirm_ticket_') ||
       customId === 'confirm_new_tagging_ticket' ||
       customId === 'confirm_budget_adjustment' ||
-      customId === 'confirm_general_ticket'
+      customId === 'confirm_general_ticket' ||
+      customId === 'confirm_activation_ticket'
     ) {
       await this.handleTicketConfirmation(interaction);
     } else if (
@@ -79,7 +82,8 @@ export class FormHandlerService {
       customId.startsWith('cancel_ticket_') ||
       customId === 'cancel_new_tagging_ticket' ||
       customId === 'cancel_budget_adjustment' ||
-      customId === 'cancel_general_ticket'
+      customId === 'cancel_general_ticket' ||
+      customId === 'cancel_activation_ticket'
     ) {
       await this.handleTicketCancellation(interaction);
     } else {
@@ -339,7 +343,20 @@ export class FormHandlerService {
 
       // Obter equipe baseada na seleção da sessão
       const teamName = session.ticketData?.team || 'suporte';
-      const team = this.discordService['getTeamByName'](teamName);
+      let team = this.discordService['getTeamByName'](teamName);
+      
+      // Para tickets de Ativação, criar um team específico com canal de ativação
+      if (category === 'activation') {
+        const activationChannelId = this.discordService['config']?.DISCORD_ACTIVATION_CHANNEL_ID;
+        if (activationChannelId && team) {
+          // Criar um objeto team específico para ativação com o canal correto
+          team = {
+            ...team,
+            channelId: activationChannelId,
+            name: 'Ativação',
+          };
+        }
+      }
 
       // Determinar texto da categoria
       const categoryText =
@@ -351,7 +368,9 @@ export class FormHandlerService {
               ? 'Ajuste de Verba'
               : category === 'general'
                 ? 'Geral'
-                : 'Desconhecida';
+                : category === 'activation'
+                  ? 'Ativação'
+                  : 'Desconhecida';
 
       // Criar thread do ticket
       const thread = await this.discordService['createTicketThread'](team, {
@@ -677,6 +696,159 @@ export class FormHandlerService {
         content: '❌ Erro interno ao processar o formulário. Tente novamente.',
       });
     }
+  }
+
+  private async handleActivationModal(
+    interaction: ModalSubmitInteraction,
+  ): Promise<void> {
+    try {
+      await interaction.deferReply({ ephemeral: true });
+
+      // Extrair dados do formulário
+      const formData = {
+        title: interaction.fields.getTextInputValue('title'),
+        description: interaction.fields.getTextInputValue('description'),
+      };
+
+      // Validar dados
+      if (!formData.title || !formData.description) {
+        await interaction.editReply({
+          content:
+            '❌ Dados inválidos. Verifique se todos os campos obrigatórios foram preenchidos corretamente.',
+        });
+        return;
+      }
+
+      // Obter dados da sessão
+      const sessionKey = `${interaction.user.id}_${interaction.customId.replace('activation_form_', '')}`;
+      const discordSession = this.discordService.getUserSession(sessionKey);
+
+      if (!discordSession) {
+        await interaction.editReply({
+          content:
+            '❌ Sessão expirada. Por favor, inicie o processo novamente.',
+        });
+        return;
+      }
+
+      // Armazenar dados da sessão no FormHandlerService para confirmação
+      this.userSessions.set(interaction.user.id, {
+        clientId: discordSession.clientId,
+        clientName: discordSession.clientName,
+        formData,
+        ticketData: {
+          clientId: discordSession.clientId,
+          clientName: discordSession.clientName,
+          category: 'activation',
+          team: discordSession.team || 'suporte',
+          priority: discordSession.priority || 'medium',
+          title: formData.title,
+          description: formData.description,
+        },
+      });
+
+      // Mostrar confirmação (usando o mesmo embed do GeneralForm mas com título adaptado)
+      const embed = this.createActivationConfirmationEmbed({
+        clientName: discordSession.clientName,
+        title: formData.title,
+        description: formData.description,
+        team: discordSession.team || 'Suporte Técnico',
+        priority: discordSession.priority || 'medium',
+      });
+
+      const confirmButton = this.createActivationConfirmationButtons();
+
+      await interaction.editReply({
+        embeds: [embed],
+        components: [confirmButton],
+      });
+    } catch (error) {
+      this.logger.error('Erro ao processar formulário de ativação:', error);
+      await interaction.editReply({
+        content: '❌ Erro interno ao processar o formulário. Tente novamente.',
+      });
+    }
+  }
+
+  private createActivationConfirmationEmbed(data: {
+    clientName: string;
+    title: string;
+    description: string;
+    team: string;
+    priority: string;
+  }): any {
+    const priorityEmoji =
+      data.priority === 'high'
+        ? '🔴'
+        : data.priority === 'medium'
+          ? '🟡'
+          : '🟢';
+    const priorityText =
+      data.priority === 'high'
+        ? 'Alta'
+        : data.priority === 'medium'
+          ? 'Média'
+          : 'Baixa';
+
+    return {
+      title: '🚀 Confirmação - Ticket de Ativação',
+      description: 'Revise os dados do ticket antes de confirmar:',
+      color: 0x0099ff,
+      fields: [
+        {
+          name: '👤 Cliente',
+          value: data.clientName,
+          inline: true,
+        },
+        {
+          name: '📝 Título',
+          value: data.title,
+          inline: true,
+        },
+        {
+          name: '📋 Descrição',
+          value:
+            data.description.length > 1000
+              ? data.description.substring(0, 1000) + '...'
+              : data.description,
+          inline: false,
+        },
+        {
+          name: '👥 Equipe',
+          value: data.team,
+          inline: true,
+        },
+        {
+          name: '⚡ Prioridade',
+          value: `${priorityEmoji} ${priorityText}`,
+          inline: true,
+        },
+      ],
+      timestamp: new Date().toISOString(),
+      footer: { text: 'Clique em "Confirmar" para criar o ticket' },
+    };
+  }
+
+  private createActivationConfirmationButtons(): any {
+    return {
+      type: 1, // ActionRow
+      components: [
+        {
+          type: 2, // Button
+          style: 3, // Success
+          label: 'Confirmar Ticket',
+          emoji: { name: '✅' },
+          custom_id: 'confirm_activation_ticket',
+        },
+        {
+          type: 2, // Button
+          style: 4, // Danger
+          label: 'Cancelar',
+          emoji: { name: '❌' },
+          custom_id: 'cancel_activation_ticket',
+        },
+      ],
+    };
   }
 
   private async handleC7AutoTicketModal(
