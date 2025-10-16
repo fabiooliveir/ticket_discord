@@ -31,6 +31,7 @@ import { BudgetAdjustmentForm } from '../modules/tickets/categories/budget-adjus
 import { GeneralForm } from '../modules/tickets/categories/general/general.form';
 import { MessageHandlerService } from './message-handler.service';
 import { MessageCaptureService } from './services/message-capture.service';
+import { ChecklistService } from './checklists/checklist.service';
 import { SlaCalculator } from '../shared/utils/sla-calculator.util';
 import {
   SlaCategories,
@@ -58,6 +59,7 @@ export class DiscordService {
     private readonly budgetAdjustmentService: BudgetAdjustmentService,
     private readonly messageHandlerService: MessageHandlerService,
     private readonly messageCaptureService: MessageCaptureService,
+    private readonly checklistService: ChecklistService,
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
   ) {}
@@ -98,6 +100,22 @@ export class DiscordService {
           },
         ],
       },
+      {
+        name: 'check-list',
+        description: 'Exibe uma checklist por categoria',
+        options: [
+          {
+            name: 'categoria',
+            description: 'Categoria da checklist',
+            type: 3, // STRING
+            required: true,
+            choices: this.checklistService.getCategories().map((c) => ({
+              name: c.name,
+              value: c.value,
+            })),
+          },
+        ],
+      },
     ];
   }
 
@@ -114,11 +132,66 @@ export class DiscordService {
       case 'ajuda':
         await this.handleHelpCommand(interaction, options);
         break;
+      case 'check-list':
+        await this.handleChecklistCommand(interaction, options);
+        break;
       default:
         await interaction.reply({
           content: '❌ Comando não reconhecido!',
           ephemeral: true,
         });
+    }
+  }
+
+  private async handleChecklistCommand(interaction: any, options: any) {
+    try {
+      await interaction.deferReply({ ephemeral: true });
+
+      const category = options.getString('categoria');
+      const checklist = this.checklistService.getChecklistByCategory(category);
+
+      if (!checklist) {
+        await interaction.editReply({
+          content: '❌ Categoria não encontrada. Tente outra opção.',
+        });
+        return;
+      }
+
+      const header = `📋 Checklist ${checklist.name}`;
+      const description = checklist.steps
+        .map((step) => `✅ ${step}`)
+        .join('\n\n');
+
+      // Enviar como embed se couber no limite de 4096 caracteres de descrição
+      if (description.length <= 4000) {
+        const embed = new EmbedBuilder()
+          .setTitle(header)
+          .setDescription(description)
+          .setColor(0x2b3137);
+
+        await interaction.editReply({ embeds: [embed] });
+        return;
+      }
+
+      // Fallback: anexar arquivo .txt quando exceder limite do embed
+      const fileBuffer = Buffer.from(`${header}\n\n${description}`, 'utf-8');
+      await interaction.editReply({
+        content: `${header}\n\nO conteúdo é extenso; enviando como anexo.`,
+        files: [{ attachment: fileBuffer, name: `checklist-${category}.txt` }],
+      });
+    } catch (error) {
+      this.logger.error('Erro ao exibir checklist:', error);
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({
+          content: '❌ Não foi possível exibir a checklist.',
+          ephemeral: true,
+        });
+      } else {
+        await interaction.reply({
+          content: '❌ Não foi possível exibir a checklist.',
+          ephemeral: true,
+        });
+      }
     }
   }
 

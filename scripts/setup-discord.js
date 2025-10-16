@@ -37,6 +37,23 @@ async function setupDiscordCommands() {
         },
       ],
     },
+    {
+      name: 'check-list',
+      description: 'Exibe uma checklist por categoria',
+      options: [
+        {
+          name: 'categoria',
+          description: 'Categoria da checklist',
+          type: 3, // STRING
+          required: true,
+          choices: [
+            { name: 'Tech', value: 'tech' },
+            { name: 'Tráfego', value: 'trafego' },
+            { name: 'Suporte', value: 'suporte' },
+          ],
+        },
+      ],
+    },
   ];
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);

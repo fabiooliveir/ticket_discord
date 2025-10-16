@@ -12,6 +12,7 @@ import { teamsConfig } from '../config/teams.config';
 import { Ticket } from '../database/entities/ticket.entity';
 import { DatabaseModule } from '../database/database.module';
 import { TicketsModule } from '../modules/tickets/tickets.module';
+import { ChecklistService } from './checklists/checklist.service';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { TicketsModule } from '../modules/tickets/tickets.module';
     FormHandlerService,
     MessageHandlerService,
     MessageCaptureService,
+    ChecklistService,
     {
       provide: 'DISCORD_CONFIG',
       useFactory: discordConfig,
